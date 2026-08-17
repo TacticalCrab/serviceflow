@@ -22,24 +22,33 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   listServiceRequests,
+  updateServiceRequestStatus,
   type ServiceRequest,
   type ServiceStatus,
 } from "@/features/ServiceRequests/api"
-import { cn } from "@/lib/utils"
+import { StatusSelect } from "@/features/ServiceRequests/StatusSelect"
+import {
+  isActiveServiceStatus,
+  serviceStatusLabels,
+  serviceStatusOptions,
+} from "@/features/ServiceRequests/status"
 
-type StatusFilter = ServiceStatus | "all"
+type StatusFilter = ServiceStatus | "active" | "all"
 
-const statusFilters: Array<{ label: string; value: StatusFilter }> = [
-  { label: "W toku", value: "in_progress" },
-  { label: "Zamknięte", value: "closed" },
-  { label: "Wszystkie", value: "all" },
+const statusFilterOptions: Array<{ value: StatusFilter; label: string }> = [
+  { value: "active", label: "Wszystkie aktywne" },
+  ...serviceStatusOptions.map(({ value, label }) => ({ value, label })),
+  { value: "all", label: "Wszystkie statusy" },
 ]
-
-const statusLabels: Record<ServiceStatus, string> = {
-  in_progress: "W toku",
-  closed: "Zamknięte",
-}
 
 function formatCreatedAt(value: string) {
   const date = new Date(value)
@@ -102,7 +111,7 @@ function requestMatchesSearch(request: ServiceRequest, query: string) {
     ...(request.additionalCosts?.flatMap((cost) => [cost.description, cost.price]) ?? []),
     searchableDate(request.createdAt),
     searchableDate(request.statusChangedAt),
-    request.status === "closed" ? "zamknięte naprawione" : "w toku",
+    serviceStatusLabels[request.status],
     preferences?.checkIn?.method === "servicePickup"
       ? "odbiór od klienta serwis odbiera"
       : "klient przywozi",
@@ -122,14 +131,20 @@ function RepairsView() {
   const [requests, setRequests] = useState<ServiceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("in_progress")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active")
   const [searchQuery, setSearchQuery] = useState("")
+  const [updatingStatusIds, setUpdatingStatusIds] = useState<Set<number>>(
+    () => new Set()
+  )
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
   const filteredRequests = useMemo(
     () =>
       requests.filter(
         (request) =>
-          (statusFilter === "all" || request.status === statusFilter) &&
+          (statusFilter === "all" ||
+            (statusFilter === "active"
+              ? isActiveServiceStatus(request.status)
+              : request.status === statusFilter)) &&
           requestMatchesSearch(request, searchQuery)
       ),
     [requests, searchQuery, statusFilter]
@@ -160,6 +175,31 @@ function RepairsView() {
     }
   }, [])
 
+  async function handleStatusChange(request: ServiceRequest, status: ServiceStatus) {
+    if (request.status === status) return
+
+    setError(null)
+    setUpdatingStatusIds((current) => new Set(current).add(request.id))
+    try {
+      const updatedRequest = await updateServiceRequestStatus(request.id, status)
+      setRequests((current) =>
+        current.map((item) => (item.id === request.id ? updatedRequest : item))
+      )
+    } catch (statusError) {
+      setError(
+        typeof statusError === "string"
+          ? statusError
+          : `Nie udało się zmienić statusu zlecenia #${request.id}.`
+      )
+    } finally {
+      setUpdatingStatusIds((current) => {
+        const next = new Set(current)
+        next.delete(request.id)
+        return next
+      })
+    }
+  }
+
   return (
     <section className="space-y-6">
       <header className="space-y-2">
@@ -185,41 +225,30 @@ function RepairsView() {
       )}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div
-          className="flex flex-wrap items-center gap-2"
-          role="group"
-          aria-label="Filtr statusu"
-        >
-          <span className="mr-1 text-sm font-medium text-muted-foreground">Status:</span>
-          {statusFilters.map((filter) => {
-            const count =
-              filter.value === "all"
-                ? requests.length
-                : requests.filter((request) => request.status === filter.value).length
-
-            return (
-              <Button
-                key={filter.value}
-                type="button"
-                size="sm"
-                variant={statusFilter === filter.value ? "default" : "outline"}
-                onClick={() => setStatusFilter(filter.value)}
-                aria-pressed={statusFilter === filter.value}
-              >
-                {filter.label}
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 text-xs tabular-nums",
-                    statusFilter === filter.value
-                      ? "bg-primary-foreground/15 text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {count}
-                </span>
-              </Button>
-            )
-          })}
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">
+            Status
+          </label>
+          <Select
+            items={statusFilterOptions}
+            value={statusFilter}
+            onValueChange={(value) => {
+              if (value) setStatusFilter(value as StatusFilter)
+            }}
+          >
+            <SelectTrigger className="h-9 w-64" aria-label="Filtr statusu">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start" alignItemWithTrigger={false}>
+              <SelectGroup>
+                {statusFilterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="w-full lg:max-w-md">
@@ -324,16 +353,15 @@ function RepairsView() {
                         {formatCost(request.costEstimate)}
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={cn(
-                            "inline-flex rounded-full px-2 py-1 text-xs font-medium",
-                            request.status === "closed"
-                              ? "bg-muted text-muted-foreground"
-                              : "bg-primary/10 text-primary"
-                          )}
-                        >
-                          {statusLabels[request.status]}
-                        </span>
+                        <StatusSelect
+                          value={request.status}
+                          onValueChange={(status) =>
+                            void handleStatusChange(request, status)
+                          }
+                          disabled={updatingStatusIds.has(request.id)}
+                          compact
+                          aria-label={`Status zlecenia #${request.id}`}
+                        />
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {formatCreatedAt(request.createdAt)}

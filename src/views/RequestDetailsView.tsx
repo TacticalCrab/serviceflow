@@ -45,8 +45,16 @@ import {
   reopenServiceRequest,
   serviceRequestToFormValues,
   updateServiceRequest,
+  updateServiceRequestStatus,
   type ServiceRequest,
+  type ServiceStatus,
 } from "@/features/ServiceRequests/api"
+import { StatusSelect } from "@/features/ServiceRequests/StatusSelect"
+import {
+  isActiveServiceStatus,
+  serviceStatusBadgeClasses,
+  serviceStatusLabels,
+} from "@/features/ServiceRequests/status"
 import { cn } from "@/lib/utils"
 
 const EDIT_FORM_ID = "service-request-edit-form"
@@ -236,6 +244,8 @@ function RequestDetailsView() {
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false)
   const [reopenError, setReopenError] = useState<string | null>(null)
   const [reopenedNotice, setReopenedNotice] = useState(false)
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const [statusNotice, setStatusNotice] = useState<string | null>(null)
 
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
@@ -328,6 +338,7 @@ function RequestDetailsView() {
       setRequest(closedRequest)
       setSaved(false)
       setReopenedNotice(false)
+      setStatusNotice(null)
       setClosedNotice(true)
       setCloseDialogOpen(false)
     } catch (error) {
@@ -351,6 +362,7 @@ function RequestDetailsView() {
       setRequest(reopenedRequest)
       setSaved(false)
       setClosedNotice(false)
+      setStatusNotice(null)
       setReopenedNotice(true)
       setReopenDialogOpen(false)
     } catch (error) {
@@ -361,6 +373,29 @@ function RequestDetailsView() {
       )
     } finally {
       setReopening(false)
+    }
+  }
+
+  async function handleStatusChange(status: ServiceStatus) {
+    if (!request || request.status === status) return
+
+    setStatusUpdating(true)
+    setSaveError(null)
+    try {
+      const updatedRequest = await updateServiceRequestStatus(request.id, status)
+      setRequest(updatedRequest)
+      setSaved(false)
+      setClosedNotice(false)
+      setReopenedNotice(false)
+      setStatusNotice(`Status zmieniono na „${serviceStatusLabels[status]}”.`)
+    } catch (error) {
+      setSaveError(
+        typeof error === "string"
+          ? error
+          : "Nie udało się zmienić statusu zlecenia. Spróbuj ponownie."
+      )
+    } finally {
+      setStatusUpdating(false)
     }
   }
 
@@ -400,7 +435,7 @@ function RequestDetailsView() {
 
   return (
     <section className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-2">
           <Button
             variant="ghost"
@@ -418,12 +453,10 @@ function RequestDetailsView() {
               <span
                 className={cn(
                   "rounded-full px-2 py-1 text-xs font-medium",
-                  request.status === "closed"
-                    ? "bg-muted text-muted-foreground"
-                    : "bg-primary/10 text-primary"
+                  serviceStatusBadgeClasses[request.status]
                 )}
               >
-                {request.status === "closed" ? "Zamknięte" : "W toku"}
+                {serviceStatusLabels[request.status]}
               </span>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -432,127 +465,146 @@ function RequestDetailsView() {
           </div>
         </div>
 
-        {editing ? (
-          <Button type="button" variant="outline" onClick={cancelEditing}>
-            Zakończ edycję
-          </Button>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setEditing(true)
-                setSaved(false)
-                setClosedNotice(false)
-                setReopenedNotice(false)
-              }}
-            >
-              <PencilIcon data-icon="inline-start" />
-              Edytuj zlecenie
-            </Button>
-            {request.status !== "closed" && (
-              <AlertDialog
-                open={closeDialogOpen}
-                onOpenChange={(open) => {
-                  if (closing) return
-                  setCloseDialogOpen(open)
-                  if (!open) setCloseError(null)
-                }}
-              >
-                <AlertDialogTrigger
-                  render={<Button type="button" disabled={closing} />}
-                >
-                  <CircleCheckBigIcon data-icon="inline-start" />
-                  Zamknij zlecenie
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Zamknąć zlecenie?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Zlecenie #{request.id} zostanie oznaczone jako zamknięte.
-                      Nadal będzie dostępne na liście napraw po wybraniu filtra
-                      „Zamknięte”.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  {closeError && (
-                    <div
-                      role="alert"
-                      className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-                    >
-                      {closeError}
-                    </div>
-                  )}
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={closing}>Anuluj</AlertDialogCancel>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={() => void handleClose()}
-                      disabled={closing}
-                    >
-                      {closing ? (
-                        <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
-                      ) : (
-                        <CircleCheckBigIcon data-icon="inline-start" />
-                      )}
-                      {closing ? "Zamykanie…" : "Zamknij zlecenie"}
-                    </Button>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-            {request.status === "closed" && (
-              <AlertDialog
-                open={reopenDialogOpen}
-                onOpenChange={(open) => {
-                  if (reopening) return
-                  setReopenDialogOpen(open)
-                  if (!open) setReopenError(null)
-                }}
-              >
-                <AlertDialogTrigger
-                  render={<Button type="button" disabled={reopening} />}
-                >
-                  <RotateCcwIcon data-icon="inline-start" />
-                  Wznów zlecenie
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Wznowić zlecenie?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Zlecenie #{request.id} ponownie otrzyma status „W toku” i
-                      pojawi się w domyślnym widoku napraw.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  {reopenError && (
-                    <div
-                      role="alert"
-                      className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
-                    >
-                      {reopenError}
-                    </div>
-                  )}
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={reopening}>Anuluj</AlertDialogCancel>
-                    <Button
-                      type="button"
-                      onClick={() => void handleReopen()}
-                      disabled={reopening}
-                    >
-                      {reopening ? (
-                        <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
-                      ) : (
-                        <RotateCcwIcon data-icon="inline-start" />
-                      )}
-                      {reopening ? "Wznawianie…" : "Wznów zlecenie"}
-                    </Button>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
+        <div className="flex max-w-full flex-wrap items-center justify-end gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Status</span>
+            <StatusSelect
+              value={request.status}
+              onValueChange={(status) => void handleStatusChange(status)}
+              disabled={statusUpdating || closing || reopening}
+              className="min-w-56"
+              aria-label="Szybka zmiana statusu"
+            />
           </div>
-        )}
+
+          {editing ? (
+            <Button type="button" variant="outline" onClick={cancelEditing}>
+              Zakończ edycję
+            </Button>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditing(true)
+                  setSaved(false)
+                  setClosedNotice(false)
+                  setReopenedNotice(false)
+                }}
+              >
+                <PencilIcon data-icon="inline-start" />
+                Edytuj zlecenie
+              </Button>
+              {isActiveServiceStatus(request.status) && (
+                <AlertDialog
+                  open={closeDialogOpen}
+                  onOpenChange={(open) => {
+                    if (closing) return
+                    setCloseDialogOpen(open)
+                    if (!open) setCloseError(null)
+                  }}
+                >
+                  <AlertDialogTrigger
+                    render={<Button type="button" disabled={closing} />}
+                  >
+                    <CircleCheckBigIcon data-icon="inline-start" />
+                    Zamknij zlecenie
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Zamknąć zlecenie?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Zlecenie #{request.id} zostanie oznaczone jako zakończone.
+                        Nadal będzie dostępne na liście napraw po wybraniu filtra
+                        „Zakończone”.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {closeError && (
+                      <div
+                        role="alert"
+                        className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                      >
+                        {closeError}
+                      </div>
+                    )}
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={closing}>Anuluj</AlertDialogCancel>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => void handleClose()}
+                        disabled={closing}
+                      >
+                        {closing ? (
+                          <LoaderCircleIcon
+                            className="animate-spin"
+                            data-icon="inline-start"
+                          />
+                        ) : (
+                          <CircleCheckBigIcon data-icon="inline-start" />
+                        )}
+                        {closing ? "Zamykanie…" : "Zamknij zlecenie"}
+                      </Button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              {request.status === "closed" && (
+                <AlertDialog
+                  open={reopenDialogOpen}
+                  onOpenChange={(open) => {
+                    if (reopening) return
+                    setReopenDialogOpen(open)
+                    if (!open) setReopenError(null)
+                  }}
+                >
+                  <AlertDialogTrigger
+                    render={<Button type="button" disabled={reopening} />}
+                  >
+                    <RotateCcwIcon data-icon="inline-start" />
+                    Wznów zlecenie
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Wznowić zlecenie?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Zlecenie #{request.id} ponownie otrzyma status „W naprawie” i
+                        pojawi się w domyślnym widoku napraw.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {reopenError && (
+                      <div
+                        role="alert"
+                        className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                      >
+                        {reopenError}
+                      </div>
+                    )}
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={reopening}>Anuluj</AlertDialogCancel>
+                      <Button
+                        type="button"
+                        onClick={() => void handleReopen()}
+                        disabled={reopening}
+                      >
+                        {reopening ? (
+                          <LoaderCircleIcon
+                            className="animate-spin"
+                            data-icon="inline-start"
+                          />
+                        ) : (
+                          <RotateCcwIcon data-icon="inline-start" />
+                        )}
+                        {reopening ? "Wznawianie…" : "Wznów zlecenie"}
+                      </Button>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          )}
+        </div>
       </header>
 
       {saved && (
@@ -573,6 +625,13 @@ function RequestDetailsView() {
         <div className="flex items-center gap-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300">
           <CheckCircle2Icon className="size-4 shrink-0" />
           Zlecenie zostało wznowione.
+        </div>
+      )}
+
+      {statusNotice && (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300">
+          <CheckCircle2Icon className="size-4 shrink-0" />
+          {statusNotice}
         </div>
       )}
 

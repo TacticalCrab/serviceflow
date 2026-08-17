@@ -39,6 +39,7 @@ import {
   listServiceRequests,
   type ServiceRequest,
 } from "@/features/ServiceRequests/api"
+import { isActiveServiceStatus } from "@/features/ServiceRequests/status"
 import { cn } from "@/lib/utils"
 
 function isDateInPeriod(value: string, from: Date, to: Date) {
@@ -236,7 +237,7 @@ function HomeView() {
   const stats = useMemo(() => {
     const inProgress = requests.filter(
       (request) =>
-        request.status === "in_progress" &&
+        isActiveServiceStatus(request.status) &&
         isDateInPeriod(request.createdAt, periodStart, periodEnd)
     )
     const completed = requests.filter(

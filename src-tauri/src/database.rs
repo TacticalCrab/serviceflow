@@ -20,7 +20,7 @@ impl Database {
                 client_name TEXT NOT NULL,
                 client_phone TEXT,
                 device_name TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'in_progress',
+                status TEXT NOT NULL DEFAULT 'waiting_for_device',
                 payload TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
                 status_changed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
@@ -32,8 +32,8 @@ impl Database {
                 ON service_requests(status);
 
             UPDATE service_requests
-            SET status = 'in_progress'
-            WHERE status = 'new';
+            SET status = 'in_repair'
+            WHERE status IN ('new', 'in_progress');
             ",
         )?;
 

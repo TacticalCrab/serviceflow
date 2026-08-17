@@ -11,7 +11,15 @@ type Serialized<T> = T extends Date
       : T
 
 type ServiceRequestPayload = Serialized<FormSchema>
-type ServiceStatus = "in_progress" | "closed"
+type ServiceStatus =
+  | "waiting_for_device"
+  | "diagnosis"
+  | "waiting_for_approval"
+  | "in_repair"
+  | "waiting_for_parts"
+  | "ready_for_return"
+  | "closed"
+  | "cancelled"
 
 type ServiceRequest = ServiceRequestPayload & {
   id: number
@@ -94,6 +102,10 @@ async function reopenServiceRequest(id: number) {
   return invoke<ServiceRequest>("reopen_service_request", { id })
 }
 
+async function updateServiceRequestStatus(id: number, status: ServiceStatus) {
+  return invoke<ServiceRequest>("update_service_request_status", { id, status })
+}
+
 async function updateServiceRequest(id: number, values: FormSchema) {
   return invoke<ServiceRequest>("update_service_request", {
     id,
@@ -109,5 +121,6 @@ export {
   reopenServiceRequest,
   serviceRequestToFormValues,
   updateServiceRequest,
+  updateServiceRequestStatus,
 }
 export type { ServiceRequest, ServiceRequestPayload, ServiceStatus }
