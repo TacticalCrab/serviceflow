@@ -261,6 +261,8 @@ function HomeView() {
     const today = startOfDay(new Date())
     const futurePickups = requests
       .flatMap((request) => {
+        if (request.status !== "waiting_for_device") return []
+
         const checkIn = request.client.preferences?.checkIn
         if (checkIn?.method !== "servicePickup" || !checkIn.date) return []
 
@@ -270,6 +272,8 @@ function HomeView() {
       .sort((first, second) => first.date.getTime() - second.date.getTime())
     const futureDeliveries = requests
       .flatMap((request) => {
+        if (request.status !== "ready_for_return") return []
+
         const checkOut = request.client.preferences?.checkOut
         if (checkOut?.method !== "serviceDelivery" || !checkOut.date) return []
 
