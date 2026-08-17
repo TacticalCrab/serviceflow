@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react"
-import { useLocation } from "react-router"
+import { Link, useLocation } from "react-router"
 import { format } from "date-fns"
 import { pl } from "date-fns/locale"
 import {
   CheckCircle2Icon,
   CircleAlertIcon,
+  EyeIcon,
   LoaderCircleIcon,
   WrenchIcon,
 } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -132,6 +134,7 @@ function RepairsView() {
                     <th className="px-4 py-3 font-medium">Wycena</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium">Utworzono</th>
+                    <th className="px-4 py-3 text-right font-medium">Akcje</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -166,6 +169,17 @@ function RepairsView() {
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {formatCreatedAt(request.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          nativeButton={false}
+                          render={<Link to={`/naprawy/${request.id}`} />}
+                        >
+                          <EyeIcon data-icon="inline-start" />
+                          Otwórz
+                        </Button>
                       </td>
                     </tr>
                   ))}

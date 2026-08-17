@@ -103,6 +103,42 @@ fn insert_request(
     find_by_id(connection, id)?.ok_or_else(|| "Nie odnaleziono zapisanego zlecenia".into())
 }
 
+fn update_request(
+    connection: &Connection,
+    id: i64,
+    request: NewServiceRequest,
+) -> Result<ServiceRequest, String> {
+    validate_request(&request)?;
+
+    let payload = serde_json::to_string(&request)
+        .map_err(|error| format!("Nie udało się przygotować zlecenia: {error}"))?;
+    let changed = connection
+        .execute(
+            "
+            UPDATE service_requests
+            SET client_name = ?1,
+                client_phone = ?2,
+                device_name = ?3,
+                payload = ?4
+            WHERE id = ?5
+            ",
+            params![
+                request.client.name.trim(),
+                request.client.phone.as_deref(),
+                request.device.name.trim(),
+                payload,
+                id,
+            ],
+        )
+        .map_err(|error| format!("Nie udało się zaktualizować zlecenia: {error}"))?;
+
+    if changed == 0 {
+        return Err(format!("Nie znaleziono zlecenia #{id}"));
+    }
+
+    find_by_id(connection, id)?.ok_or_else(|| "Nie odnaleziono zaktualizowanego zlecenia".into())
+}
+
 fn find_all(connection: &Connection) -> Result<Vec<ServiceRequest>, String> {
     let mut statement = connection
         .prepare(
@@ -158,6 +194,20 @@ pub fn list_service_requests(database: State<'_, Database>) -> Result<Vec<Servic
 }
 
 #[tauri::command]
+pub fn update_service_request(
+    id: i64,
+    request: NewServiceRequest,
+    database: State<'_, Database>,
+) -> Result<ServiceRequest, String> {
+    let connection = database
+        .connection
+        .lock()
+        .map_err(|_| "Baza danych jest chwilowo niedostępna".to_string())?;
+
+    update_request(&connection, id, request)
+}
+
+#[tauri::command]
 pub fn get_service_request(
     id: i64,
     database: State<'_, Database>,
@@ -174,7 +224,7 @@ pub fn get_service_request(
 mod tests {
     use std::path::Path;
 
-    use super::{find_all, insert_request};
+    use super::{find_all, insert_request, update_request};
     use crate::{
         database::Database,
         models::{Client, Device, NewServiceRequest},
@@ -212,8 +262,22 @@ mod tests {
 
         assert_eq!(created.id, 1);
         assert_eq!(created.status, "new");
+        let serialized = serde_json::to_value(&created).expect("request should serialize");
+        assert!(serialized["client"].get("email").is_none());
+        assert!(serialized["client"].get("address").is_none());
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].request.client.name, "Anna");
         assert_eq!(requests[0].request.device.name, "Ekspres");
+
+        let mut updated_request = sample_request();
+        updated_request.client.name = "Maria".into();
+        let updated = update_request(&connection, created.id, updated_request)
+            .expect("request should update");
+
+        assert_eq!(updated.request.client.name, "Maria");
+        assert_eq!(
+            find_all(&connection).expect("requests should reload").len(),
+            1
+        );
     }
 }

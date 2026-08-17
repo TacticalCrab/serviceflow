@@ -1,10 +1,11 @@
-import { Navigate, Outlet, Route, Routes } from "react-router"
+import { createBrowserRouter, Navigate, Outlet, RouterProvider } from "react-router"
 
 import "./App.css"
 import { Navbar } from "@/components/Navbar"
 import { HomeView } from "@/views/HomeView"
 import { NewServiceOrderView } from "@/views/NewServiceOrderView"
 import { RepairsView } from "@/views/RepairsView"
+import { RequestDetailsView } from "@/views/RequestDetailsView"
 
 function AppLayout() {
   return (
@@ -17,17 +18,25 @@ function AppLayout() {
   )
 }
 
+function NotFoundRedirect() {
+  return <Navigate to="/" replace />
+}
+
+const router = createBrowserRouter([
+  {
+    Component: AppLayout,
+    children: [
+      { index: true, Component: HomeView },
+      { path: "naprawy", Component: RepairsView },
+      { path: "naprawy/:id", Component: RequestDetailsView },
+      { path: "zlecenia/nowe", Component: NewServiceOrderView },
+      { path: "*", Component: NotFoundRedirect },
+    ],
+  },
+])
+
 function App() {
-  return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        <Route index element={<HomeView />} />
-        <Route path="naprawy" element={<RepairsView />} />
-        <Route path="zlecenia/nowe" element={<NewServiceOrderView />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
-  )
+  return <RouterProvider router={router} />
 }
 
 export default App

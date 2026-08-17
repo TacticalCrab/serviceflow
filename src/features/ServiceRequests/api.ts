@@ -22,6 +22,54 @@ function serializeFormValues(values: FormSchema): ServiceRequestPayload {
   return JSON.parse(JSON.stringify(values)) as ServiceRequestPayload
 }
 
+function parseDate(value: string | null | undefined) {
+  if (!value) return undefined
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
+
+function serviceRequestToFormValues(request: ServiceRequest): FormSchema {
+  const preferences = request.client.preferences
+
+  return {
+    client: {
+      name: request.client.name,
+      surname: request.client.surname ?? undefined,
+      phone: request.client.phone ?? undefined,
+      email: request.client.email ?? undefined,
+      address: request.client.address ?? undefined,
+      preferences: preferences
+        ? {
+            repairCard: preferences.repairCard ?? undefined,
+            invoice: preferences.invoice ?? undefined,
+            checkIn: preferences.checkIn
+              ? {
+                  method: preferences.checkIn.method ?? undefined,
+                  date: parseDate(preferences.checkIn.date),
+                }
+              : undefined,
+            checkOut: preferences.checkOut
+              ? {
+                  method: preferences.checkOut.method ?? undefined,
+                  date: parseDate(preferences.checkOut.date),
+                }
+              : undefined,
+          }
+        : undefined,
+    },
+    device: {
+      name: request.device.name,
+      model: request.device.model ?? undefined,
+      defect: request.device.defect ?? undefined,
+    },
+    repairTime: request.repairTime ?? undefined,
+    repairSteps: request.repairSteps ? [...request.repairSteps] : undefined,
+    additionalCosts: request.additionalCosts?.map((cost) => ({ ...cost })),
+    costEstimate: request.costEstimate ?? undefined,
+  }
+}
+
 async function createServiceRequest(values: FormSchema) {
   return invoke<ServiceRequest>("create_service_request", {
     request: serializeFormValues(values),
@@ -36,5 +84,18 @@ async function getServiceRequest(id: number) {
   return invoke<ServiceRequest | null>("get_service_request", { id })
 }
 
-export { createServiceRequest, getServiceRequest, listServiceRequests }
+async function updateServiceRequest(id: number, values: FormSchema) {
+  return invoke<ServiceRequest>("update_service_request", {
+    id,
+    request: serializeFormValues(values),
+  })
+}
+
+export {
+  createServiceRequest,
+  getServiceRequest,
+  listServiceRequests,
+  serviceRequestToFormValues,
+  updateServiceRequest,
+}
 export type { ServiceRequest, ServiceRequestPayload }

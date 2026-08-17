@@ -20,6 +20,7 @@ pub fn run() {
             commands::create_service_request,
             commands::list_service_requests,
             commands::get_service_request,
+            commands::update_service_request,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

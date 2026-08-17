@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { format } from "date-fns"
 import { pl } from "date-fns/locale"
@@ -35,8 +35,12 @@ import { schema, type FormSchema } from "./schema"
 type ServiceFormProps = {
   className?: string
   defaultValues?: FormSchema
+  description?: string
+  formId?: string
+  onDirtyChange?: (isDirty: boolean) => void
   onSubmit?: (values: FormSchema) => Promise<void> | void
   submitLabel?: string
+  title?: string
 }
 
 function createDefaultValues(values?: FormSchema): FormSchema {
@@ -136,38 +140,61 @@ function DatePicker({
   )
 }
 
+function FormDirtyObserver({
+  isDirty,
+  onDirtyChange,
+}: {
+  isDirty: boolean
+  onDirtyChange?: (isDirty: boolean) => void
+}) {
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
+  return null
+}
+
 function ServiceForm({
   className,
   defaultValues,
+  description = "Uzupełnij dane klienta, urządzenia i planowanej naprawy.",
+  formId,
+  onDirtyChange,
   onSubmit,
   submitLabel = "Zapisz zlecenie",
+  title = "Nowe zlecenie serwisowe",
 }: ServiceFormProps) {
   const form = useForm({
     defaultValues: createDefaultValues(defaultValues),
     validators: {
       onSubmit: schema,
     },
-    onSubmit: async ({ value }) => {
+    onSubmit: async ({ value, formApi }) => {
       await onSubmit?.(value)
+      formApi.reset(value)
     },
   })
 
   return (
     <form
+      id={formId}
       className={cn("w-full", className)}
       noValidate
       onSubmit={(event) => {
         event.preventDefault()
         event.stopPropagation()
-        void form.handleSubmit()
+        void form.handleSubmit().catch(() => undefined)
       }}
     >
+      <form.Subscribe selector={(state) => state.isDirty}>
+        {(isDirty) => (
+          <FormDirtyObserver isDirty={isDirty} onDirtyChange={onDirtyChange} />
+        )}
+      </form.Subscribe>
       <Card>
         <CardHeader>
-          <CardTitle>Nowe zlecenie serwisowe</CardTitle>
-          <CardDescription>
-            Uzupełnij dane klienta, urządzenia i planowanej naprawy.
-          </CardDescription>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">

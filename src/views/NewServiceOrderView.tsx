@@ -22,6 +22,7 @@ function NewServiceOrderView() {
           ? submitError
           : "Nie udało się zapisać zlecenia. Spróbuj ponownie."
       )
+      throw submitError
     }
   }
 
