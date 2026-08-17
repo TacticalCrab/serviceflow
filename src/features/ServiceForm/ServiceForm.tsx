@@ -1,0 +1,803 @@
+import { useState } from "react"
+import { useForm } from "@tanstack/react-form"
+import { format } from "date-fns"
+import { pl } from "date-fns/locale"
+import { CalendarIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+
+import { schema, type FormSchema } from "./schema"
+
+type ServiceFormProps = {
+  className?: string
+  defaultValues?: FormSchema
+  onSubmit?: (values: FormSchema) => Promise<void> | void
+  submitLabel?: string
+}
+
+function createDefaultValues(values?: FormSchema): FormSchema {
+  return {
+    client: {
+      name: values?.client.name ?? "",
+      surname: values?.client.surname,
+      phone: values?.client.phone,
+      email: values?.client.email,
+      address: values?.client.address,
+      preferences: {
+        checkIn: {
+          method: values?.client.preferences?.checkIn?.method,
+          date: values?.client.preferences?.checkIn?.date,
+        },
+        checkOut: {
+          method: values?.client.preferences?.checkOut?.method,
+          date: values?.client.preferences?.checkOut?.date,
+        },
+        repairCard: values?.client.preferences?.repairCard ?? false,
+        invoice: values?.client.preferences?.invoice ?? false,
+      },
+    },
+    device: {
+      name: values?.device.name ?? "",
+      model: values?.device.model,
+      defect: values?.device.defect,
+    },
+    repairTime: values?.repairTime,
+    repairSteps: [...(values?.repairSteps ?? [])],
+    additionalCosts:
+      values?.additionalCosts?.map((cost) => ({ ...cost })) ?? [],
+    costEstimate: values?.costEstimate,
+  }
+}
+
+function optionalText(value: string) {
+  return value === "" ? undefined : value
+}
+
+function numberInputValue(value: number | undefined) {
+  return typeof value === "number" && !Number.isNaN(value) ? value : ""
+}
+
+type DatePickerProps = {
+  id: string
+  value?: Date
+  onChange: (value: Date | undefined) => void
+  onBlur: () => void
+  invalid?: boolean
+  placeholder: string
+}
+
+function DatePicker({
+  id,
+  value,
+  onChange,
+  onBlur,
+  invalid,
+  placeholder,
+}: DatePickerProps) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            id={id}
+            type="button"
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !value && "text-muted-foreground"
+            )}
+            aria-invalid={invalid}
+          />
+        }
+      >
+        <CalendarIcon data-icon="inline-start" />
+        {value ? format(value, "PPP", { locale: pl }) : placeholder}
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={value}
+          onSelect={(date) => {
+            onChange(date)
+            onBlur()
+            setOpen(false)
+          }}
+          locale={pl}
+          autoFocus
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function ServiceForm({
+  className,
+  defaultValues,
+  onSubmit,
+  submitLabel = "Zapisz zlecenie",
+}: ServiceFormProps) {
+  const form = useForm({
+    defaultValues: createDefaultValues(defaultValues),
+    validators: {
+      onSubmit: schema,
+    },
+    onSubmit: async ({ value }) => {
+      await onSubmit?.(value)
+    },
+  })
+
+  return (
+    <form
+      className={cn("w-full", className)}
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        void form.handleSubmit()
+      }}
+    >
+      <Card>
+        <CardHeader>
+          <CardTitle>Nowe zlecenie serwisowe</CardTitle>
+          <CardDescription>
+            Uzupełnij dane klienta, urządzenia i planowanej naprawy.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <FieldSet className="rounded-lg border p-4">
+            <FieldLegend>Dane klienta</FieldLegend>
+            <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <form.Field name="client.name">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>
+                        Imię <span className="text-destructive">*</span>
+                      </FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(event.target.value)}
+                        aria-invalid={isInvalid}
+                        autoComplete="given-name"
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+
+              <form.Field name="client.surname">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Nazwisko</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                        aria-invalid={isInvalid}
+                        autoComplete="family-name"
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+
+              <form.Field name="client.phone">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Telefon</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="tel"
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                        aria-invalid={isInvalid}
+                        autoComplete="tel"
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+
+              <form.Field name="client.email">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>E-mail</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="email"
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                        aria-invalid={isInvalid}
+                        autoComplete="email"
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+
+              <form.Field name="client.address">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field className="sm:col-span-2" data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Adres</FieldLabel>
+                      <Textarea
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                        aria-invalid={isInvalid}
+                        autoComplete="street-address"
+                        rows={2}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+            </FieldGroup>
+
+            <FieldSet>
+              <FieldLegend variant="label">Preferencje klienta</FieldLegend>
+              <FieldGroup className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <FieldSet className="rounded-lg border bg-muted/30 p-3">
+                  <FieldLegend variant="label">Przyjęcie sprzętu do serwisu</FieldLegend>
+                  <form.Field name="client.preferences.checkIn.method">
+                    {(methodField) => (
+                      <>
+                        <Field>
+                          <RadioGroup
+                            name={methodField.name}
+                            value={methodField.state.value ?? ""}
+                            onValueChange={(value) =>
+                              methodField.handleChange(
+                                value as "clientDropOff" | "servicePickup"
+                              )
+                            }
+                            onBlur={methodField.handleBlur}
+                          >
+                            <Field orientation="horizontal">
+                              <RadioGroupItem
+                                id="check-in-client"
+                                value="clientDropOff"
+                              />
+                              <FieldLabel htmlFor="check-in-client">
+                                Klient przywozi sprzęt
+                              </FieldLabel>
+                            </Field>
+                            <Field orientation="horizontal">
+                              <RadioGroupItem
+                                id="check-in-service"
+                                value="servicePickup"
+                              />
+                              <FieldLabel htmlFor="check-in-service">
+                                Serwis odbiera sprzęt
+                              </FieldLabel>
+                            </Field>
+                          </RadioGroup>
+                        </Field>
+
+                        {methodField.state.value && (
+                          <form.Field name="client.preferences.checkIn.date">
+                            {(dateField) => {
+                              const isInvalid =
+                                dateField.state.meta.isTouched &&
+                                !dateField.state.meta.isValid
+
+                              return (
+                                <Field data-invalid={isInvalid}>
+                                  <FieldLabel htmlFor={dateField.name}>
+                                    Data przyjęcia
+                                  </FieldLabel>
+                                  <DatePicker
+                                    id={dateField.name}
+                                    value={dateField.state.value}
+                                    onChange={dateField.handleChange}
+                                    onBlur={dateField.handleBlur}
+                                    invalid={isInvalid}
+                                    placeholder="Wybierz datę przyjęcia"
+                                  />
+                                  {isInvalid && (
+                                    <FieldError errors={dateField.state.meta.errors} />
+                                  )}
+                                </Field>
+                              )
+                            }}
+                          </form.Field>
+                        )}
+                      </>
+                    )}
+                  </form.Field>
+                </FieldSet>
+
+                <FieldSet className="rounded-lg border bg-muted/30 p-3">
+                  <FieldLegend variant="label">Zwrot sprzętu po naprawie</FieldLegend>
+                  <form.Field name="client.preferences.checkOut.method">
+                    {(methodField) => (
+                      <>
+                        <Field>
+                          <RadioGroup
+                            name={methodField.name}
+                            value={methodField.state.value ?? ""}
+                            onValueChange={(value) =>
+                              methodField.handleChange(
+                                value as "clientPickup" | "serviceDelivery"
+                              )
+                            }
+                            onBlur={methodField.handleBlur}
+                          >
+                            <Field orientation="horizontal">
+                              <RadioGroupItem
+                                id="check-out-client"
+                                value="clientPickup"
+                              />
+                              <FieldLabel htmlFor="check-out-client">
+                                Klient odbiera sprzęt
+                              </FieldLabel>
+                            </Field>
+                            <Field orientation="horizontal">
+                              <RadioGroupItem
+                                id="check-out-service"
+                                value="serviceDelivery"
+                              />
+                              <FieldLabel htmlFor="check-out-service">
+                                Serwis dostarcza sprzęt
+                              </FieldLabel>
+                            </Field>
+                          </RadioGroup>
+                        </Field>
+
+                        {methodField.state.value && (
+                          <form.Field name="client.preferences.checkOut.date">
+                            {(dateField) => {
+                              const isInvalid =
+                                dateField.state.meta.isTouched &&
+                                !dateField.state.meta.isValid
+
+                              return (
+                                <Field data-invalid={isInvalid}>
+                                  <FieldLabel htmlFor={dateField.name}>
+                                    Planowana data zwrotu
+                                  </FieldLabel>
+                                  <DatePicker
+                                    id={dateField.name}
+                                    value={dateField.state.value}
+                                    onChange={dateField.handleChange}
+                                    onBlur={dateField.handleBlur}
+                                    invalid={isInvalid}
+                                    placeholder="Wybierz datę zwrotu"
+                                  />
+                                  {isInvalid && (
+                                    <FieldError errors={dateField.state.meta.errors} />
+                                  )}
+                                </Field>
+                              )
+                            }}
+                          </form.Field>
+                        )}
+                      </>
+                    )}
+                  </form.Field>
+                </FieldSet>
+              </FieldGroup>
+
+              <FieldGroup className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <form.Field name="client.preferences.repairCard">
+                  {(field) => (
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id={field.name}
+                        name={field.name}
+                        checked={field.state.value ?? false}
+                        onCheckedChange={field.handleChange}
+                        onBlur={field.handleBlur}
+                      />
+                      <FieldLabel htmlFor={field.name}>Karta naprawy</FieldLabel>
+                    </Field>
+                  )}
+                </form.Field>
+
+                <form.Field name="client.preferences.invoice">
+                  {(field) => (
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id={field.name}
+                        name={field.name}
+                        checked={field.state.value ?? false}
+                        onCheckedChange={field.handleChange}
+                        onBlur={field.handleBlur}
+                      />
+                      <FieldLabel htmlFor={field.name}>Faktura</FieldLabel>
+                    </Field>
+                  )}
+                </form.Field>
+              </FieldGroup>
+            </FieldSet>
+          </FieldSet>
+
+          <FieldSet className="rounded-lg border p-4">
+            <FieldLegend>Urządzenie</FieldLegend>
+            <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <form.Field name="device.name">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>
+                        Nazwa urządzenia <span className="text-destructive">*</span>
+                      </FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(event.target.value)}
+                        aria-invalid={isInvalid}
+                        placeholder="Np. ekspres do kawy"
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+
+              <form.Field name="device.model">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Model</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                        aria-invalid={isInvalid}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+
+              <form.Field name="device.defect">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field className="sm:col-span-2" data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Opis usterki</FieldLabel>
+                      <Textarea
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                        aria-invalid={isInvalid}
+                        placeholder="Opisz objawy i okoliczności wystąpienia usterki"
+                        rows={4}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+            </FieldGroup>
+          </FieldSet>
+
+          <FieldSet className="rounded-lg border p-4">
+            <FieldLegend>Plan naprawy</FieldLegend>
+            <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <form.Field name="repairTime">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Przewidywany czas naprawy</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                        aria-invalid={isInvalid}
+                        placeholder="Np. 3 dni robocze"
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+
+              <form.Field name="costEstimate">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Szacowany koszt</FieldLabel>
+                      <div className="relative">
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={numberInputValue(field.state.value)}
+                          onBlur={field.handleBlur}
+                          onChange={(event) => {
+                            const value = event.target.value
+                            field.handleChange(value === "" ? undefined : Number(value))
+                          }}
+                          aria-invalid={isInvalid}
+                          className="pr-11"
+                          inputMode="decimal"
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-sm text-muted-foreground">
+                          PLN
+                        </span>
+                      </div>
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+            </FieldGroup>
+
+            <form.Field name="repairSteps" mode="array">
+              {(field) => (
+                <Field>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <FieldLabel>Kroki naprawy</FieldLabel>
+                      <FieldDescription>Dodaj kolejne etapy planowanych prac.</FieldDescription>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={() => field.pushValue("")}>
+                      <PlusIcon data-icon="inline-start" />
+                      Dodaj krok
+                    </Button>
+                  </div>
+
+                  {(field.state.value ?? []).length === 0 ? (
+                    <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                      Nie dodano jeszcze żadnych kroków.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {(field.state.value ?? []).map((_, index) => (
+                        <form.Field key={index} name={`repairSteps[${index}]`}>
+                          {(stepField) => {
+                            const isInvalid =
+                              stepField.state.meta.isTouched && !stepField.state.meta.isValid
+
+                            return (
+                              <Field data-invalid={isInvalid}>
+                                <div className="flex items-start gap-2">
+                                  <div className="flex-1">
+                                    <FieldLabel className="sr-only" htmlFor={stepField.name}>
+                                      Krok {index + 1}
+                                    </FieldLabel>
+                                    <Input
+                                      id={stepField.name}
+                                      name={stepField.name}
+                                      value={stepField.state.value}
+                                      onBlur={stepField.handleBlur}
+                                      onChange={(event) => stepField.handleChange(event.target.value)}
+                                      aria-invalid={isInvalid}
+                                      placeholder={`Krok ${index + 1}`}
+                                    />
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => field.removeValue(index)}
+                                    aria-label={`Usuń krok ${index + 1}`}
+                                  >
+                                    <Trash2Icon />
+                                  </Button>
+                                </div>
+                                {isInvalid && <FieldError errors={stepField.state.meta.errors} />}
+                              </Field>
+                            )
+                          }}
+                        </form.Field>
+                      ))}
+                    </div>
+                  )}
+                </Field>
+              )}
+            </form.Field>
+          </FieldSet>
+
+          <FieldSet className="rounded-lg border p-4">
+            <FieldLegend>Dodatkowe koszty</FieldLegend>
+            <form.Field name="additionalCosts" mode="array">
+              {(field) => (
+                <Field>
+                  <div className="flex items-center justify-between gap-3">
+                    <FieldDescription>
+                      Uwzględnij części, materiały i inne opłaty poza wyceną podstawową.
+                    </FieldDescription>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => field.pushValue({ description: "", price: 0 })}
+                    >
+                      <PlusIcon data-icon="inline-start" />
+                      Dodaj koszt
+                    </Button>
+                  </div>
+
+                  {(field.state.value ?? []).length === 0 ? (
+                    <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                      Brak dodatkowych kosztów.
+                    </p>
+                  ) : (
+                    <div className="space-y-4">
+                      {(field.state.value ?? []).map((_, index) => (
+                        <div
+                          key={index}
+                          className="grid grid-cols-1 items-start gap-3 rounded-lg bg-muted/50 p-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"
+                        >
+                          <form.Field name={`additionalCosts[${index}].description`}>
+                            {(descriptionField) => {
+                              const isInvalid =
+                                descriptionField.state.meta.isTouched &&
+                                !descriptionField.state.meta.isValid
+
+                              return (
+                                <Field data-invalid={isInvalid}>
+                                  <FieldLabel htmlFor={descriptionField.name}>Opis</FieldLabel>
+                                  <Input
+                                    id={descriptionField.name}
+                                    name={descriptionField.name}
+                                    value={descriptionField.state.value}
+                                    onBlur={descriptionField.handleBlur}
+                                    onChange={(event) =>
+                                      descriptionField.handleChange(event.target.value)
+                                    }
+                                    aria-invalid={isInvalid}
+                                    placeholder="Np. wymiana uszczelki"
+                                  />
+                                  {isInvalid && (
+                                    <FieldError errors={descriptionField.state.meta.errors} />
+                                  )}
+                                </Field>
+                              )
+                            }}
+                          </form.Field>
+
+                          <form.Field name={`additionalCosts[${index}].price`}>
+                            {(priceField) => {
+                              const isInvalid =
+                                priceField.state.meta.isTouched && !priceField.state.meta.isValid
+
+                              return (
+                                <Field data-invalid={isInvalid}>
+                                  <FieldLabel htmlFor={priceField.name}>Cena</FieldLabel>
+                                  <div className="relative">
+                                    <Input
+                                      id={priceField.name}
+                                      name={priceField.name}
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={numberInputValue(priceField.state.value)}
+                                      onBlur={priceField.handleBlur}
+                                      onChange={(event) => {
+                                        const value = event.target.value
+                                        priceField.handleChange(
+                                          value === "" ? Number.NaN : Number(value)
+                                        )
+                                      }}
+                                      aria-invalid={isInvalid}
+                                      className="pr-11"
+                                      inputMode="decimal"
+                                    />
+                                    <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-sm text-muted-foreground">
+                                      PLN
+                                    </span>
+                                  </div>
+                                  {isInvalid && <FieldError errors={priceField.state.meta.errors} />}
+                                </Field>
+                              )
+                            }}
+                          </form.Field>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="sm:mt-6"
+                            onClick={() => field.removeValue(index)}
+                            aria-label={`Usuń dodatkowy koszt ${index + 1}`}
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Field>
+              )}
+            </form.Field>
+          </FieldSet>
+        </CardContent>
+
+        <CardFooter className="justify-end">
+          <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+            {([canSubmit, isSubmitting]) => (
+              <Button type="submit" disabled={!canSubmit || isSubmitting} size="lg">
+                <SaveIcon data-icon="inline-start" />
+                {isSubmitting ? "Zapisywanie…" : submitLabel}
+              </Button>
+            )}
+          </form.Subscribe>
+        </CardFooter>
+      </Card>
+    </form>
+  )
+}
+
+export { ServiceForm }
+export type { ServiceFormProps }
+export default ServiceForm
