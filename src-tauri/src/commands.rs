@@ -151,6 +151,17 @@ fn close_request(connection: &Connection, id: i64) -> Result<ServiceRequest, Str
     find_by_id(connection, id)?.ok_or_else(|| format!("Nie znaleziono zlecenia #{id}"))
 }
 
+fn reopen_request(connection: &Connection, id: i64) -> Result<ServiceRequest, String> {
+    connection
+        .execute(
+            "UPDATE service_requests SET status = 'in_progress' WHERE id = ?1",
+            [id],
+        )
+        .map_err(|error| format!("Nie udało się wznowić zlecenia: {error}"))?;
+
+    find_by_id(connection, id)?.ok_or_else(|| format!("Nie znaleziono zlecenia #{id}"))
+}
+
 fn find_all(connection: &Connection) -> Result<Vec<ServiceRequest>, String> {
     let mut statement = connection
         .prepare(
@@ -233,6 +244,19 @@ pub fn close_service_request(
 }
 
 #[tauri::command]
+pub fn reopen_service_request(
+    id: i64,
+    database: State<'_, Database>,
+) -> Result<ServiceRequest, String> {
+    let connection = database
+        .connection
+        .lock()
+        .map_err(|_| "Baza danych jest chwilowo niedostępna".to_string())?;
+
+    reopen_request(&connection, id)
+}
+
+#[tauri::command]
 pub fn get_service_request(
     id: i64,
     database: State<'_, Database>,
@@ -249,7 +273,7 @@ pub fn get_service_request(
 mod tests {
     use std::path::Path;
 
-    use super::{close_request, find_all, insert_request, update_request};
+    use super::{close_request, find_all, insert_request, reopen_request, update_request};
     use crate::{
         database::Database,
         models::{Client, Device, NewServiceRequest},
@@ -307,5 +331,8 @@ mod tests {
 
         let closed = close_request(&connection, created.id).expect("request should close");
         assert_eq!(closed.status, "closed");
+
+        let reopened = reopen_request(&connection, created.id).expect("request should reopen");
+        assert_eq!(reopened.status, "in_progress");
     }
 }

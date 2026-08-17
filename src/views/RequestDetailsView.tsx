@@ -15,9 +15,20 @@ import {
   CircleCheckBigIcon,
   LoaderCircleIcon,
   PencilIcon,
+  RotateCcwIcon,
   SaveIcon,
 } from "lucide-react"
 
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -31,6 +42,7 @@ import type { FormSchema } from "@/features/ServiceForm/schema"
 import {
   closeServiceRequest,
   getServiceRequest,
+  reopenServiceRequest,
   serviceRequestToFormValues,
   updateServiceRequest,
   type ServiceRequest,
@@ -217,7 +229,13 @@ function RequestDetailsView() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false)
+  const [closeError, setCloseError] = useState<string | null>(null)
   const [closedNotice, setClosedNotice] = useState(false)
+  const [reopening, setReopening] = useState(false)
+  const [reopenDialogOpen, setReopenDialogOpen] = useState(false)
+  const [reopenError, setReopenError] = useState<string | null>(null)
+  const [reopenedNotice, setReopenedNotice] = useState(false)
 
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
@@ -302,23 +320,47 @@ function RequestDetailsView() {
 
   async function handleClose() {
     if (!request) return
-    if (!window.confirm("Czy na pewno chcesz zamknąć to zlecenie serwisowe?")) return
 
     setClosing(true)
-    setSaveError(null)
+    setCloseError(null)
     try {
       const closedRequest = await closeServiceRequest(request.id)
       setRequest(closedRequest)
       setSaved(false)
+      setReopenedNotice(false)
       setClosedNotice(true)
+      setCloseDialogOpen(false)
     } catch (error) {
-      setSaveError(
+      setCloseError(
         typeof error === "string"
           ? error
           : "Nie udało się zamknąć zlecenia. Spróbuj ponownie."
       )
     } finally {
       setClosing(false)
+    }
+  }
+
+  async function handleReopen() {
+    if (!request) return
+
+    setReopening(true)
+    setReopenError(null)
+    try {
+      const reopenedRequest = await reopenServiceRequest(request.id)
+      setRequest(reopenedRequest)
+      setSaved(false)
+      setClosedNotice(false)
+      setReopenedNotice(true)
+      setReopenDialogOpen(false)
+    } catch (error) {
+      setReopenError(
+        typeof error === "string"
+          ? error
+          : "Nie udało się wznowić zlecenia. Spróbuj ponownie."
+      )
+    } finally {
+      setReopening(false)
     }
   }
 
@@ -403,20 +445,111 @@ function RequestDetailsView() {
                 setEditing(true)
                 setSaved(false)
                 setClosedNotice(false)
+                setReopenedNotice(false)
               }}
             >
               <PencilIcon data-icon="inline-start" />
               Edytuj zlecenie
             </Button>
             {request.status !== "closed" && (
-              <Button
-                type="button"
-                onClick={handleClose}
-                disabled={closing}
+              <AlertDialog
+                open={closeDialogOpen}
+                onOpenChange={(open) => {
+                  if (closing) return
+                  setCloseDialogOpen(open)
+                  if (!open) setCloseError(null)
+                }}
               >
-                <CircleCheckBigIcon data-icon="inline-start" />
-                {closing ? "Zamykanie…" : "Zamknij zlecenie"}
-              </Button>
+                <AlertDialogTrigger
+                  render={<Button type="button" disabled={closing} />}
+                >
+                  <CircleCheckBigIcon data-icon="inline-start" />
+                  Zamknij zlecenie
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Zamknąć zlecenie?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Zlecenie #{request.id} zostanie oznaczone jako zamknięte.
+                      Nadal będzie dostępne na liście napraw po wybraniu filtra
+                      „Zamknięte”.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {closeError && (
+                    <div
+                      role="alert"
+                      className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                    >
+                      {closeError}
+                    </div>
+                  )}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={closing}>Anuluj</AlertDialogCancel>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => void handleClose()}
+                      disabled={closing}
+                    >
+                      {closing ? (
+                        <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
+                      ) : (
+                        <CircleCheckBigIcon data-icon="inline-start" />
+                      )}
+                      {closing ? "Zamykanie…" : "Zamknij zlecenie"}
+                    </Button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            {request.status === "closed" && (
+              <AlertDialog
+                open={reopenDialogOpen}
+                onOpenChange={(open) => {
+                  if (reopening) return
+                  setReopenDialogOpen(open)
+                  if (!open) setReopenError(null)
+                }}
+              >
+                <AlertDialogTrigger
+                  render={<Button type="button" disabled={reopening} />}
+                >
+                  <RotateCcwIcon data-icon="inline-start" />
+                  Wznów zlecenie
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Wznowić zlecenie?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Zlecenie #{request.id} ponownie otrzyma status „W toku” i
+                      pojawi się w domyślnym widoku napraw.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {reopenError && (
+                    <div
+                      role="alert"
+                      className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                    >
+                      {reopenError}
+                    </div>
+                  )}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={reopening}>Anuluj</AlertDialogCancel>
+                    <Button
+                      type="button"
+                      onClick={() => void handleReopen()}
+                      disabled={reopening}
+                    >
+                      {reopening ? (
+                        <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
+                      ) : (
+                        <RotateCcwIcon data-icon="inline-start" />
+                      )}
+                      {reopening ? "Wznawianie…" : "Wznów zlecenie"}
+                    </Button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         )}
@@ -433,6 +566,13 @@ function RequestDetailsView() {
         <div className="flex items-center gap-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300">
           <CheckCircle2Icon className="size-4 shrink-0" />
           Zlecenie zostało zamknięte.
+        </div>
+      )}
+
+      {reopenedNotice && (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300">
+          <CheckCircle2Icon className="size-4 shrink-0" />
+          Zlecenie zostało wznowione.
         </div>
       )}
 

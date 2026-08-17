@@ -89,6 +89,10 @@ async function closeServiceRequest(id: number) {
   return invoke<ServiceRequest>("close_service_request", { id })
 }
 
+async function reopenServiceRequest(id: number) {
+  return invoke<ServiceRequest>("reopen_service_request", { id })
+}
+
 async function updateServiceRequest(id: number, values: FormSchema) {
   return invoke<ServiceRequest>("update_service_request", {
     id,
@@ -101,6 +105,7 @@ export {
   createServiceRequest,
   getServiceRequest,
   listServiceRequests,
+  reopenServiceRequest,
   serviceRequestToFormValues,
   updateServiceRequest,
 }
