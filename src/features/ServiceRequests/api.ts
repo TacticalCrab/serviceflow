@@ -71,6 +71,7 @@ function serviceRequestToFormValues(request: ServiceRequest): FormSchema {
     device: {
       name: request.device.name,
       model: request.device.model ?? undefined,
+      serialNumber: request.device.serialNumber ?? undefined,
       defect: request.device.defect ?? undefined,
     },
     repairTime: request.repairTime ?? undefined,

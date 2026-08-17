@@ -362,6 +362,7 @@ mod tests {
             device: Device {
                 name: "Ekspres".into(),
                 model: Some("Cafe Pro".into()),
+                serial_number: Some("SN-12345678".into()),
                 defect: Some("Nie podgrzewa wody".into()),
             },
             repair_time: Some("2 dni".into()),
@@ -387,6 +388,10 @@ mod tests {
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0].request.client.name, "Anna");
         assert_eq!(requests[0].request.device.name, "Ekspres");
+        assert_eq!(
+            requests[0].request.device.serial_number.as_deref(),
+            Some("SN-12345678")
+        );
 
         let mut updated_request = sample_request();
         updated_request.client.name = "Maria".into();

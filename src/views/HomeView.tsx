@@ -155,7 +155,11 @@ function ScheduledTransportCard({
   const clientName = [request.client.name, request.client.surname]
     .filter(Boolean)
     .join(" ")
-  const deviceName = [request.device.name, request.device.model]
+  const deviceName = [
+    request.device.name,
+    request.device.model,
+    request.device.serialNumber ? `S/N: ${request.device.serialNumber}` : undefined,
+  ]
     .filter(Boolean)
     .join(" · ")
   const transportDetails = {

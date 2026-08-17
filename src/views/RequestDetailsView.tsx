@@ -156,6 +156,7 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
           <dl className="grid gap-5 sm:grid-cols-2">
             <DetailItem label="Nazwa" value={request.device.name} />
             <DetailItem label="Model" value={request.device.model} />
+            <DetailItem label="Numer seryjny" value={request.device.serialNumber} />
             <div className="sm:col-span-2">
               <DetailItem label="Opis usterki" value={request.device.defect} />
             </div>

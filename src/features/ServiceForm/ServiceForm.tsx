@@ -67,6 +67,7 @@ function createDefaultValues(values?: FormSchema): FormSchema {
     device: {
       name: values?.device.name ?? "",
       model: values?.device.model,
+      serialNumber: values?.device.serialNumber,
       defect: values?.device.defect,
     },
     repairTime: values?.repairTime,
@@ -536,6 +537,30 @@ function ServiceForm({
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(optionalText(event.target.value))}
                         aria-invalid={isInvalid}
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+
+              <form.Field name="device.serialNumber">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Numer seryjny</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(optionalText(event.target.value))
+                        }
+                        aria-invalid={isInvalid}
+                        placeholder="Np. SN-12345678"
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
