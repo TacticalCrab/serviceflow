@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation } from "react-router"
 import { format } from "date-fns"
 import { pl } from "date-fns/locale"
@@ -7,7 +7,9 @@ import {
   CircleAlertIcon,
   EyeIcon,
   LoaderCircleIcon,
+  SearchIcon,
   WrenchIcon,
+  XIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -18,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   listServiceRequests,
   type ServiceRequest,
@@ -55,17 +58,82 @@ function formatCost(value: number | undefined) {
   }).format(value)
 }
 
+function normalizeSearchValue(value: unknown) {
+  return String(value ?? "")
+    .replace(/[łŁ]/g, "l")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pl-PL")
+}
+
+function searchableDate(value: string | undefined) {
+  if (!value) return ""
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+
+  return [
+    value,
+    format(date, "d MMMM yyyy HH:mm", { locale: pl }),
+    format(date, "dd.MM.yyyy"),
+  ].join(" ")
+}
+
+function requestMatchesSearch(request: ServiceRequest, query: string) {
+  const searchTokens = normalizeSearchValue(query).trim().split(/\s+/).filter(Boolean)
+  if (searchTokens.length === 0) return true
+
+  const preferences = request.client.preferences
+  const searchableValues = [
+    request.id,
+    `#${request.id}`,
+    request.client.name,
+    request.client.surname,
+    request.client.phone,
+    request.client.email,
+    request.client.address,
+    request.device.name,
+    request.device.model,
+    request.device.defect,
+    request.repairTime,
+    request.costEstimate,
+    formatCost(request.costEstimate),
+    ...(request.repairSteps ?? []),
+    ...(request.additionalCosts?.flatMap((cost) => [cost.description, cost.price]) ?? []),
+    searchableDate(request.createdAt),
+    searchableDate(request.statusChangedAt),
+    request.status === "closed" ? "zamknięte naprawione" : "w toku",
+    preferences?.checkIn?.method === "servicePickup"
+      ? "odbiór od klienta serwis odbiera"
+      : "klient przywozi",
+    preferences?.checkOut?.method === "serviceDelivery"
+      ? "dostawa do klienta serwis dostarcza"
+      : "klient odbiera",
+    searchableDate(preferences?.checkIn?.date),
+    searchableDate(preferences?.checkOut?.date),
+  ]
+  const searchIndex = normalizeSearchValue(searchableValues.join(" "))
+
+  return searchTokens.every((token) => searchIndex.includes(token))
+}
+
 function RepairsView() {
   const location = useLocation()
   const [requests, setRequests] = useState<ServiceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("in_progress")
+  const [searchQuery, setSearchQuery] = useState("")
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
-  const filteredRequests =
-    statusFilter === "all"
-      ? requests
-      : requests.filter((request) => request.status === statusFilter)
+  const filteredRequests = useMemo(
+    () =>
+      requests.filter(
+        (request) =>
+          (statusFilter === "all" || request.status === statusFilter) &&
+          requestMatchesSearch(request, searchQuery)
+      ),
+    [requests, searchQuery, statusFilter]
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -116,37 +184,73 @@ function RepairsView() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtr statusu">
-        <span className="mr-1 text-sm font-medium text-muted-foreground">Status:</span>
-        {statusFilters.map((filter) => {
-          const count =
-            filter.value === "all"
-              ? requests.length
-              : requests.filter((request) => request.status === filter.value).length
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div
+          className="flex flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Filtr statusu"
+        >
+          <span className="mr-1 text-sm font-medium text-muted-foreground">Status:</span>
+          {statusFilters.map((filter) => {
+            const count =
+              filter.value === "all"
+                ? requests.length
+                : requests.filter((request) => request.status === filter.value).length
 
-          return (
-            <Button
-              key={filter.value}
-              type="button"
-              size="sm"
-              variant={statusFilter === filter.value ? "default" : "outline"}
-              onClick={() => setStatusFilter(filter.value)}
-              aria-pressed={statusFilter === filter.value}
-            >
-              {filter.label}
-              <span
-                className={cn(
-                  "rounded-full px-1.5 text-xs tabular-nums",
-                  statusFilter === filter.value
-                    ? "bg-primary-foreground/15 text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
-                )}
+            return (
+              <Button
+                key={filter.value}
+                type="button"
+                size="sm"
+                variant={statusFilter === filter.value ? "default" : "outline"}
+                onClick={() => setStatusFilter(filter.value)}
+                aria-pressed={statusFilter === filter.value}
               >
-                {count}
-              </span>
-            </Button>
-          )
-        })}
+                {filter.label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 text-xs tabular-nums",
+                    statusFilter === filter.value
+                      ? "bg-primary-foreground/15 text-primary-foreground"
+                      : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {count}
+                </span>
+              </Button>
+            )
+          })}
+        </div>
+
+        <div className="w-full lg:max-w-md">
+          <label htmlFor="service-request-search" className="sr-only">
+            Wyszukaj zlecenie serwisowe
+          </label>
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="service-request-search"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Nr zlecenia, klient, telefon, ekspres…"
+              className="h-9 pl-9 pr-9"
+              autoComplete="off"
+            />
+            {searchQuery && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute right-1 top-1"
+                onClick={() => setSearchQuery("")}
+                aria-label="Wyczyść wyszukiwanie"
+              >
+                <XIcon />
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       <Card>
@@ -155,7 +259,9 @@ function RepairsView() {
           <CardDescription>
             {loading
               ? "Pobieranie zleceń…"
-              : `${filteredRequests.length} ${filteredRequests.length === 1 ? "zlecenie" : "zleceń"}`}
+              : searchQuery.trim()
+                ? `${filteredRequests.length} z ${requests.length} zleceń`
+                : `${filteredRequests.length} ${filteredRequests.length === 1 ? "zlecenie" : "zleceń"}`}
           </CardDescription>
         </CardHeader>
         <CardContent className={filteredRequests.length > 0 ? "px-0" : undefined}>
@@ -172,7 +278,9 @@ function RepairsView() {
               <div>
                 <p className="font-medium">Brak zleceń</p>
                 <p className="text-sm text-muted-foreground">
-                  Nie ma zleceń o wybranym statusie.
+                  {searchQuery.trim()
+                    ? "Nie znaleziono zleceń pasujących do wyszukiwania i wybranego statusu."
+                    : "Nie ma zleceń o wybranym statusie."}
                 </p>
               </div>
             </div>
