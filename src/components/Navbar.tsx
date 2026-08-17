@@ -11,7 +11,7 @@ const navigation = [
 
 function Navbar() {
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
+    <header className="sticky top-0 z-40 border-b border-border/80 bg-card/95 shadow-xs backdrop-blur supports-backdrop-filter:bg-card/90">
       <div className="mx-auto flex min-h-16 w-full max-w-7xl items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
         <Link
           to="/"
@@ -32,8 +32,8 @@ function Navbar() {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  "rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                  isActive && "bg-muted text-foreground"
+                  "rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+                  isActive && "bg-primary/10 text-primary"
                 )
               }
             >

@@ -23,8 +23,8 @@ function RepairsView() {
         </CardHeader>
         <CardContent>
           <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center">
-            <span className="flex size-10 items-center justify-center rounded-full bg-muted">
-              <WrenchIcon className="size-5 text-muted-foreground" />
+            <span className="flex size-10 items-center justify-center rounded-full bg-primary/10">
+              <WrenchIcon className="size-5 text-primary" />
             </span>
             <div>
               <p className="font-medium">Brak napraw</p>

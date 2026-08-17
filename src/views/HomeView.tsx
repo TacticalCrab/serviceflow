@@ -24,7 +24,7 @@ function HomeView() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-muted">
+            <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <ClipboardListIcon className="size-5" />
             </div>
             <CardTitle>Naprawy</CardTitle>
@@ -42,7 +42,7 @@ function HomeView() {
 
         <Card>
           <CardHeader>
-            <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-muted">
+            <div className="mb-2 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <PlusIcon className="size-5" />
             </div>
             <CardTitle>Nowe zlecenie</CardTitle>
