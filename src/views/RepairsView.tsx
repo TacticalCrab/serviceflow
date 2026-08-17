@@ -137,6 +137,7 @@ function RepairsView() {
     () => new Set()
   )
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
+  const deleted = Boolean((location.state as { deleted?: boolean } | null)?.deleted)
   const filteredRequests = useMemo(
     () =>
       requests.filter(
@@ -211,6 +212,13 @@ function RepairsView() {
         <div className="flex items-center gap-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300">
           <CheckCircle2Icon className="size-4 shrink-0" />
           Zlecenie serwisowe zostało zapisane.
+        </div>
+      )}
+
+      {deleted && (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300">
+          <CheckCircle2Icon className="size-4 shrink-0" />
+          Zlecenie serwisowe zostało usunięte.
         </div>
       )}
 

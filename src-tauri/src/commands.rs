@@ -186,6 +186,18 @@ fn reopen_request(connection: &Connection, id: i64) -> Result<ServiceRequest, St
     update_request_status(connection, id, "in_repair")
 }
 
+fn delete_request(connection: &Connection, id: i64) -> Result<(), String> {
+    let deleted = connection
+        .execute("DELETE FROM service_requests WHERE id = ?1", [id])
+        .map_err(|error| format!("Nie udało się usunąć zlecenia: {error}"))?;
+
+    if deleted == 0 {
+        return Err(format!("Nie znaleziono zlecenia #{id}"));
+    }
+
+    Ok(())
+}
+
 fn find_all(connection: &Connection) -> Result<Vec<ServiceRequest>, String> {
     let mut statement = connection
         .prepare(
@@ -302,6 +314,16 @@ pub fn update_service_request_status(
 }
 
 #[tauri::command]
+pub fn delete_service_request(id: i64, database: State<'_, Database>) -> Result<(), String> {
+    let connection = database
+        .connection
+        .lock()
+        .map_err(|_| "Baza danych jest chwilowo niedostępna".to_string())?;
+
+    delete_request(&connection, id)
+}
+
+#[tauri::command]
 pub fn get_service_request(
     id: i64,
     database: State<'_, Database>,
@@ -319,7 +341,7 @@ mod tests {
     use std::path::Path;
 
     use super::{
-        close_request, find_all, insert_request, reopen_request, update_request,
+        close_request, delete_request, find_all, insert_request, reopen_request, update_request,
         update_request_status,
     };
     use crate::{
@@ -387,5 +409,11 @@ mod tests {
             .expect("request status should update");
         assert_eq!(waiting.status, "waiting_for_parts");
         assert!(update_request_status(&connection, created.id, "unknown").is_err());
+
+        delete_request(&connection, created.id).expect("request should delete");
+        assert!(find_all(&connection)
+            .expect("requests should reload")
+            .is_empty());
+        assert!(delete_request(&connection, created.id).is_err());
     }
 }

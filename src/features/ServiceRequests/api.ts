@@ -106,6 +106,10 @@ async function updateServiceRequestStatus(id: number, status: ServiceStatus) {
   return invoke<ServiceRequest>("update_service_request_status", { id, status })
 }
 
+async function deleteServiceRequest(id: number) {
+  return invoke<void>("delete_service_request", { id })
+}
+
 async function updateServiceRequest(id: number, values: FormSchema) {
   return invoke<ServiceRequest>("update_service_request", {
     id,
@@ -116,6 +120,7 @@ async function updateServiceRequest(id: number, values: FormSchema) {
 export {
   closeServiceRequest,
   createServiceRequest,
+  deleteServiceRequest,
   getServiceRequest,
   listServiceRequests,
   reopenServiceRequest,

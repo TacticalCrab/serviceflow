@@ -4,6 +4,7 @@ import {
   type BlockerFunction,
   useBeforeUnload,
   useBlocker,
+  useNavigate,
   useParams,
 } from "react-router"
 import { format } from "date-fns"
@@ -17,6 +18,7 @@ import {
   PencilIcon,
   RotateCcwIcon,
   SaveIcon,
+  Trash2Icon,
 } from "lucide-react"
 
 import {
@@ -41,6 +43,7 @@ import ServiceForm from "@/features/ServiceForm/ServiceForm"
 import type { FormSchema } from "@/features/ServiceForm/schema"
 import {
   closeServiceRequest,
+  deleteServiceRequest,
   getServiceRequest,
   reopenServiceRequest,
   serviceRequestToFormValues,
@@ -226,6 +229,7 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
 }
 
 function RequestDetailsView() {
+  const navigate = useNavigate()
   const { id } = useParams()
   const requestId = Number(id)
   const [request, setRequest] = useState<ServiceRequest | null>(null)
@@ -246,6 +250,9 @@ function RequestDetailsView() {
   const [reopenedNotice, setReopenedNotice] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [statusNotice, setStatusNotice] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
@@ -396,6 +403,24 @@ function RequestDetailsView() {
       )
     } finally {
       setStatusUpdating(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!request) return
+
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteServiceRequest(request.id)
+      navigate("/naprawy", { replace: true, state: { deleted: true } })
+    } catch (error) {
+      setDeleteError(
+        typeof error === "string"
+          ? error
+          : "Nie udało się usunąć zlecenia. Spróbuj ponownie."
+      )
+      setDeleting(false)
     }
   }
 
@@ -602,6 +627,63 @@ function RequestDetailsView() {
                   </AlertDialogContent>
                 </AlertDialog>
               )}
+              <AlertDialog
+                open={deleteDialogOpen}
+                onOpenChange={(open) => {
+                  if (deleting) return
+                  setDeleteDialogOpen(open)
+                  if (!open) setDeleteError(null)
+                }}
+              >
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={deleting || statusUpdating}
+                    />
+                  }
+                >
+                  <Trash2Icon data-icon="inline-start" />
+                  Usuń
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Usunąć zlecenie?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Zlecenie #{request.id} oraz wszystkie zapisane w nim dane zostaną
+                      trwale usunięte. Tej operacji nie można cofnąć.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  {deleteError && (
+                    <div
+                      role="alert"
+                      className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                    >
+                      {deleteError}
+                    </div>
+                  )}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deleting}>Anuluj</AlertDialogCancel>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => void handleDelete()}
+                      disabled={deleting}
+                    >
+                      {deleting ? (
+                        <LoaderCircleIcon
+                          className="animate-spin"
+                          data-icon="inline-start"
+                        />
+                      ) : (
+                        <Trash2Icon data-icon="inline-start" />
+                      )}
+                      {deleting ? "Usuwanie…" : "Usuń zlecenie"}
+                    </Button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )}
         </div>

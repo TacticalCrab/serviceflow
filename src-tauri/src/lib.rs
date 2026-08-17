@@ -24,6 +24,7 @@ pub fn run() {
             commands::close_service_request,
             commands::reopen_service_request,
             commands::update_service_request_status,
+            commands::delete_service_request,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
