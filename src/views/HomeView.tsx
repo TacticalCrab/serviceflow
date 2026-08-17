@@ -144,13 +144,13 @@ function StatCard({
 type ScheduledTransportCardProps = {
   request: ServiceRequest
   date: Date
-  type: "delivery" | "pickup"
+  method: "clientDropOff" | "servicePickup" | "clientPickup" | "serviceDelivery"
 }
 
 function ScheduledTransportCard({
   request,
   date,
-  type,
+  method,
 }: ScheduledTransportCardProps) {
   const clientName = [request.client.name, request.client.surname]
     .filter(Boolean)
@@ -158,14 +158,35 @@ function ScheduledTransportCard({
   const deviceName = [request.device.name, request.device.model]
     .filter(Boolean)
     .join(" · ")
-  const isDelivery = type === "delivery"
-  const Icon = isDelivery ? TruckIcon : PackageCheckIcon
+  const transportDetails = {
+    clientDropOff: {
+      title: "Klient przywozi urządzenie",
+      shortLabel: "Przyjęcie urządzenia",
+      icon: PackageCheckIcon,
+    },
+    servicePickup: {
+      title: "Serwis odbiera urządzenie",
+      shortLabel: "Odbiór od klienta",
+      icon: TruckIcon,
+    },
+    clientPickup: {
+      title: "Klient odbiera urządzenie",
+      shortLabel: "Wydanie urządzenia",
+      icon: PackageCheckIcon,
+    },
+    serviceDelivery: {
+      title: "Serwis dostarcza urządzenie",
+      shortLabel: "Dostawa do klienta",
+      icon: TruckIcon,
+    },
+  }[method]
+  const Icon = transportDetails.icon
 
   return (
     <Link
       to={`/naprawy/${request.id}`}
       className="group block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-      aria-label={`${isDelivery ? "Dostawa" : "Odbiór"} dla zlecenia #${request.id}`}
+      aria-label={`${transportDetails.shortLabel} dla zlecenia #${request.id}`}
     >
       <Card className="h-full transition-[transform,border-color,box-shadow] group-hover:-translate-y-0.5 group-hover:border-primary/35 group-hover:shadow-md">
         <CardHeader>
@@ -174,9 +195,7 @@ function ScheduledTransportCard({
               <Icon className="size-5" />
             </span>
             <div className="min-w-0 flex-1 space-y-1">
-              <CardTitle>
-                {isDelivery ? "Dostawa do klienta" : "Odbiór od klienta"}
-              </CardTitle>
+              <CardTitle>{transportDetails.title}</CardTitle>
               <CardDescription>Zlecenie #{request.id}</CardDescription>
             </div>
             <ArrowRightIcon className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
@@ -259,26 +278,30 @@ function HomeView() {
       0
     )
     const today = startOfDay(new Date())
-    const futurePickups = requests
+    const futureCheckIns = requests
       .flatMap((request) => {
         if (request.status !== "waiting_for_device") return []
 
         const checkIn = request.client.preferences?.checkIn
-        if (checkIn?.method !== "servicePickup" || !checkIn.date) return []
+        if (!checkIn?.method || !checkIn.date) return []
 
         const date = new Date(checkIn.date)
-        return isValid(date) && !isBefore(date, today) ? [{ request, date }] : []
+        return isValid(date) && !isBefore(date, today)
+          ? [{ request, date, method: checkIn.method }]
+          : []
       })
       .sort((first, second) => first.date.getTime() - second.date.getTime())
-    const futureDeliveries = requests
+    const futureReturns = requests
       .flatMap((request) => {
-        if (request.status !== "ready_for_return") return []
+        if (request.status === "closed") return []
 
         const checkOut = request.client.preferences?.checkOut
-        if (checkOut?.method !== "serviceDelivery" || !checkOut.date) return []
+        if (!checkOut?.method || !checkOut.date) return []
 
         const date = new Date(checkOut.date)
-        return isValid(date) && !isBefore(date, today) ? [{ request, date }] : []
+        return isValid(date) && !isBefore(date, today)
+          ? [{ request, date, method: checkOut.method }]
+          : []
       })
       .sort((first, second) => first.date.getTime() - second.date.getTime())
 
@@ -288,8 +311,8 @@ function HomeView() {
       revenue,
       costs,
       profit: revenue - costs,
-      futurePickups,
-      futureDeliveries,
+      futureCheckIns,
+      futureReturns,
     }
   }, [periodEnd, periodStart, requests])
 
@@ -336,98 +359,6 @@ function HomeView() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard
-          title="W trakcie naprawy"
-          value={statValue(stats.inProgress)}
-          description="Zlecenia przyjęte w wybranym okresie"
-          icon={WrenchIcon}
-        />
-        <StatCard
-          title="Naprawione ekspresy"
-          value={statValue(stats.completed)}
-          description="Zlecenia zamknięte w wybranym okresie"
-          icon={CheckCircle2Icon}
-          accent="success"
-        />
-        <StatCard
-          title="Koszt / zysk"
-          value={statValue(formatCurrency(stats.profit))}
-          description={
-            <div className="grid gap-1">
-              <div>Wartość: {formatCurrency(stats.revenue)}</div>
-              <div>Koszty: {formatCurrency(stats.costs)}</div>
-            </div>
-          }
-          icon={WalletCardsIcon}
-          accent={stats.profit < 0 ? "warning" : "success"}
-        />
-      </div>
-
-      <div className="grid gap-5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Przyszłe dostawy</h2>
-          {!loading && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {stats.futureDeliveries.length}
-            </span>
-          )}
-        </div>
-        {loading ? (
-          <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed text-sm text-muted-foreground">
-            <LoaderCircleIcon className="size-4 animate-spin" />
-            Pobieranie dostaw…
-          </div>
-        ) : stats.futureDeliveries.length ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {stats.futureDeliveries.map(({ request, date }) => (
-              <ScheduledTransportCard
-                key={`delivery-${request.id}-${date.toISOString()}`}
-                request={request}
-                date={date}
-                type="delivery"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Brak zaplanowanych dostaw ekspresów do klientów.
-          </div>
-        )}
-      </div>
-
-      <div className="grid gap-5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Przyszłe odbiory</h2>
-          {!loading && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {stats.futurePickups.length}
-            </span>
-          )}
-        </div>
-        {loading ? (
-          <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed text-sm text-muted-foreground">
-            <LoaderCircleIcon className="size-4 animate-spin" />
-            Pobieranie odbiorów…
-          </div>
-        ) : stats.futurePickups.length ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {stats.futurePickups.map(({ request, date }) => (
-              <ScheduledTransportCard
-                key={`pickup-${request.id}-${date.toISOString()}`}
-                request={request}
-                date={date}
-                type="pickup"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Brak zaplanowanych odbiorów ekspresów od klientów.
-          </div>
-        )}
-      </div>
-
       <div>
         <h2 className="mb-4 text-lg font-semibold">Szybkie akcje</h2>
         <div className="grid gap-4 md:grid-cols-2">
@@ -472,6 +403,99 @@ function HomeView() {
           </Card>
         </div>
       </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          title="W trakcie naprawy"
+          value={statValue(stats.inProgress)}
+          description="Zlecenia przyjęte w wybranym okresie"
+          icon={WrenchIcon}
+        />
+        <StatCard
+          title="Naprawione ekspresy"
+          value={statValue(stats.completed)}
+          description="Zlecenia zamknięte w wybranym okresie"
+          icon={CheckCircle2Icon}
+          accent="success"
+        />
+        <StatCard
+          title="Koszt / zysk"
+          value={statValue(formatCurrency(stats.profit))}
+          description={
+            <div className="grid gap-1">
+              <div>Wartość: {formatCurrency(stats.revenue)}</div>
+              <div>Koszty: {formatCurrency(stats.costs)}</div>
+            </div>
+          }
+          icon={WalletCardsIcon}
+          accent={stats.profit < 0 ? "warning" : "success"}
+        />
+      </div>
+
+      <div className="grid gap-5">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">Zaplanowane wydania urządzeń</h2>
+          {!loading && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              {stats.futureReturns.length}
+            </span>
+          )}
+        </div>
+        {loading ? (
+          <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed text-sm text-muted-foreground">
+            <LoaderCircleIcon className="size-4 animate-spin" />
+            Pobieranie wydań…
+          </div>
+        ) : stats.futureReturns.length ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {stats.futureReturns.map(({ request, date, method }) => (
+              <ScheduledTransportCard
+                key={`return-${request.id}-${date.toISOString()}`}
+                request={request}
+                date={date}
+                method={method}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Brak zaplanowanych wydań lub dostaw urządzeń.
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-5">
+        <div className="flex items-center gap-2">
+          <h2 className="text-lg font-semibold">Zaplanowane przyjęcia urządzeń</h2>
+          {!loading && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              {stats.futureCheckIns.length}
+            </span>
+          )}
+        </div>
+        {loading ? (
+          <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed text-sm text-muted-foreground">
+            <LoaderCircleIcon className="size-4 animate-spin" />
+            Pobieranie przyjęć…
+          </div>
+        ) : stats.futureCheckIns.length ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {stats.futureCheckIns.map(({ request, date, method }) => (
+              <ScheduledTransportCard
+                key={`check-in-${request.id}-${date.toISOString()}`}
+                request={request}
+                date={date}
+                method={method}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Brak zaplanowanych przyjęć lub odbiorów urządzeń.
+          </div>
+        )}
+      </div>
+
     </section>
   )
 }
