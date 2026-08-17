@@ -87,8 +87,9 @@ fn insert_request(
                 client_name,
                 client_phone,
                 device_name,
+                status,
                 payload
-            ) VALUES (?1, ?2, ?3, ?4)
+            ) VALUES (?1, ?2, ?3, 'in_progress', ?4)
             ",
             params![
                 request.client.name.trim(),
@@ -137,6 +138,17 @@ fn update_request(
     }
 
     find_by_id(connection, id)?.ok_or_else(|| "Nie odnaleziono zaktualizowanego zlecenia".into())
+}
+
+fn close_request(connection: &Connection, id: i64) -> Result<ServiceRequest, String> {
+    connection
+        .execute(
+            "UPDATE service_requests SET status = 'closed' WHERE id = ?1",
+            [id],
+        )
+        .map_err(|error| format!("Nie udało się zamknąć zlecenia: {error}"))?;
+
+    find_by_id(connection, id)?.ok_or_else(|| format!("Nie znaleziono zlecenia #{id}"))
 }
 
 fn find_all(connection: &Connection) -> Result<Vec<ServiceRequest>, String> {
@@ -208,6 +220,19 @@ pub fn update_service_request(
 }
 
 #[tauri::command]
+pub fn close_service_request(
+    id: i64,
+    database: State<'_, Database>,
+) -> Result<ServiceRequest, String> {
+    let connection = database
+        .connection
+        .lock()
+        .map_err(|_| "Baza danych jest chwilowo niedostępna".to_string())?;
+
+    close_request(&connection, id)
+}
+
+#[tauri::command]
 pub fn get_service_request(
     id: i64,
     database: State<'_, Database>,
@@ -224,7 +249,7 @@ pub fn get_service_request(
 mod tests {
     use std::path::Path;
 
-    use super::{find_all, insert_request, update_request};
+    use super::{close_request, find_all, insert_request, update_request};
     use crate::{
         database::Database,
         models::{Client, Device, NewServiceRequest},
@@ -261,7 +286,7 @@ mod tests {
         let requests = find_all(&connection).expect("requests should load");
 
         assert_eq!(created.id, 1);
-        assert_eq!(created.status, "new");
+        assert_eq!(created.status, "in_progress");
         let serialized = serde_json::to_value(&created).expect("request should serialize");
         assert!(serialized["client"].get("email").is_none());
         assert!(serialized["client"].get("address").is_none());
@@ -279,5 +304,8 @@ mod tests {
             find_all(&connection).expect("requests should reload").len(),
             1
         );
+
+        let closed = close_request(&connection, created.id).expect("request should close");
+        assert_eq!(closed.status, "closed");
     }
 }

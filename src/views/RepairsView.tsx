@@ -21,7 +21,22 @@ import {
 import {
   listServiceRequests,
   type ServiceRequest,
+  type ServiceStatus,
 } from "@/features/ServiceRequests/api"
+import { cn } from "@/lib/utils"
+
+type StatusFilter = ServiceStatus | "all"
+
+const statusFilters: Array<{ label: string; value: StatusFilter }> = [
+  { label: "W toku", value: "in_progress" },
+  { label: "Zamknięte", value: "closed" },
+  { label: "Wszystkie", value: "all" },
+]
+
+const statusLabels: Record<ServiceStatus, string> = {
+  in_progress: "W toku",
+  closed: "Zamknięte",
+}
 
 function formatCreatedAt(value: string) {
   const date = new Date(value)
@@ -45,7 +60,12 @@ function RepairsView() {
   const [requests, setRequests] = useState<ServiceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("in_progress")
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
+  const filteredRequests =
+    statusFilter === "all"
+      ? requests
+      : requests.filter((request) => request.status === statusFilter)
 
   useEffect(() => {
     let cancelled = false
@@ -96,30 +116,63 @@ function RepairsView() {
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filtr statusu">
+        <span className="mr-1 text-sm font-medium text-muted-foreground">Status:</span>
+        {statusFilters.map((filter) => {
+          const count =
+            filter.value === "all"
+              ? requests.length
+              : requests.filter((request) => request.status === filter.value).length
+
+          return (
+            <Button
+              key={filter.value}
+              type="button"
+              size="sm"
+              variant={statusFilter === filter.value ? "default" : "outline"}
+              onClick={() => setStatusFilter(filter.value)}
+              aria-pressed={statusFilter === filter.value}
+            >
+              {filter.label}
+              <span
+                className={cn(
+                  "rounded-full px-1.5 text-xs tabular-nums",
+                  statusFilter === filter.value
+                    ? "bg-primary-foreground/15 text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                {count}
+              </span>
+            </Button>
+          )
+        })}
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Aktywne naprawy</CardTitle>
+          <CardTitle>Zlecenia serwisowe</CardTitle>
           <CardDescription>
             {loading
               ? "Pobieranie zleceń…"
-              : `${requests.length} ${requests.length === 1 ? "zlecenie" : "zleceń"}`}
+              : `${filteredRequests.length} ${filteredRequests.length === 1 ? "zlecenie" : "zleceń"}`}
           </CardDescription>
         </CardHeader>
-        <CardContent className={requests.length > 0 ? "px-0" : undefined}>
+        <CardContent className={filteredRequests.length > 0 ? "px-0" : undefined}>
           {loading ? (
             <div className="flex min-h-48 items-center justify-center gap-2 text-sm text-muted-foreground">
               <LoaderCircleIcon className="size-4 animate-spin" />
               Pobieranie napraw…
             </div>
-          ) : requests.length === 0 ? (
+          ) : filteredRequests.length === 0 ? (
             <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-lg border border-dashed text-center">
               <span className="flex size-10 items-center justify-center rounded-full bg-primary/10">
                 <WrenchIcon className="size-5 text-primary" />
               </span>
               <div>
-                <p className="font-medium">Brak napraw</p>
+                <p className="font-medium">Brak zleceń</p>
                 <p className="text-sm text-muted-foreground">
-                  Nowe zlecenia będą widoczne w tym miejscu.
+                  Nie ma zleceń o wybranym statusie.
                 </p>
               </div>
             </div>
@@ -138,7 +191,7 @@ function RepairsView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {requests.map((request) => (
+                  {filteredRequests.map((request) => (
                     <tr key={request.id} className="transition-colors hover:bg-muted/30">
                       <td className="px-4 py-3 font-medium">#{request.id}</td>
                       <td className="px-4 py-3">
@@ -163,8 +216,15 @@ function RepairsView() {
                         {formatCost(request.costEstimate)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                          {request.status === "new" ? "Nowe" : request.status}
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-1 text-xs font-medium",
+                            request.status === "closed"
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-primary/10 text-primary"
+                          )}
+                        >
+                          {statusLabels[request.status]}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">

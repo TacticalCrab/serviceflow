@@ -20,7 +20,7 @@ impl Database {
                 client_name TEXT NOT NULL,
                 client_phone TEXT,
                 device_name TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'new',
+                status TEXT NOT NULL DEFAULT 'in_progress',
                 payload TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
             );
@@ -29,6 +29,10 @@ impl Database {
                 ON service_requests(created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_service_requests_status
                 ON service_requests(status);
+
+            UPDATE service_requests
+            SET status = 'in_progress'
+            WHERE status = 'new';
             ",
         )?;
 

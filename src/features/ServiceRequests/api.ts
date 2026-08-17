@@ -11,10 +11,11 @@ type Serialized<T> = T extends Date
       : T
 
 type ServiceRequestPayload = Serialized<FormSchema>
+type ServiceStatus = "in_progress" | "closed"
 
 type ServiceRequest = ServiceRequestPayload & {
   id: number
-  status: string
+  status: ServiceStatus
   createdAt: string
 }
 
@@ -84,6 +85,10 @@ async function getServiceRequest(id: number) {
   return invoke<ServiceRequest | null>("get_service_request", { id })
 }
 
+async function closeServiceRequest(id: number) {
+  return invoke<ServiceRequest>("close_service_request", { id })
+}
+
 async function updateServiceRequest(id: number, values: FormSchema) {
   return invoke<ServiceRequest>("update_service_request", {
     id,
@@ -92,10 +97,11 @@ async function updateServiceRequest(id: number, values: FormSchema) {
 }
 
 export {
+  closeServiceRequest,
   createServiceRequest,
   getServiceRequest,
   listServiceRequests,
   serviceRequestToFormValues,
   updateServiceRequest,
 }
-export type { ServiceRequest, ServiceRequestPayload }
+export type { ServiceRequest, ServiceRequestPayload, ServiceStatus }

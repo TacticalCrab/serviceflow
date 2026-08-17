@@ -12,6 +12,7 @@ import {
   AlertTriangleIcon,
   ArrowLeftIcon,
   CheckCircle2Icon,
+  CircleCheckBigIcon,
   LoaderCircleIcon,
   PencilIcon,
   SaveIcon,
@@ -28,11 +29,13 @@ import {
 import ServiceForm from "@/features/ServiceForm/ServiceForm"
 import type { FormSchema } from "@/features/ServiceForm/schema"
 import {
+  closeServiceRequest,
   getServiceRequest,
   serviceRequestToFormValues,
   updateServiceRequest,
   type ServiceRequest,
 } from "@/features/ServiceRequests/api"
+import { cn } from "@/lib/utils"
 
 const EDIT_FORM_ID = "service-request-edit-form"
 
@@ -213,6 +216,8 @@ function RequestDetailsView() {
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [closedNotice, setClosedNotice] = useState(false)
 
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
@@ -295,6 +300,28 @@ function RequestDetailsView() {
     }
   }
 
+  async function handleClose() {
+    if (!request) return
+    if (!window.confirm("Czy na pewno chcesz zamknąć to zlecenie serwisowe?")) return
+
+    setClosing(true)
+    setSaveError(null)
+    try {
+      const closedRequest = await closeServiceRequest(request.id)
+      setRequest(closedRequest)
+      setSaved(false)
+      setClosedNotice(true)
+    } catch (error) {
+      setSaveError(
+        typeof error === "string"
+          ? error
+          : "Nie udało się zamknąć zlecenia. Spróbuj ponownie."
+      )
+    } finally {
+      setClosing(false)
+    }
+  }
+
   function cancelEditing() {
     if (dirty && !window.confirm("Porzucić niezapisane zmiany?")) return
 
@@ -346,8 +373,15 @@ function RequestDetailsView() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-3xl font-semibold tracking-tight">Zlecenie #{request.id}</h1>
-              <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                {request.status === "new" ? "Nowe" : request.status}
+              <span
+                className={cn(
+                  "rounded-full px-2 py-1 text-xs font-medium",
+                  request.status === "closed"
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-primary/10 text-primary"
+                )}
+              >
+                {request.status === "closed" ? "Zamknięte" : "W toku"}
               </span>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -361,16 +395,30 @@ function RequestDetailsView() {
             Zakończ edycję
           </Button>
         ) : (
-          <Button
-            type="button"
-            onClick={() => {
-              setEditing(true)
-              setSaved(false)
-            }}
-          >
-            <PencilIcon data-icon="inline-start" />
-            Edytuj zlecenie
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEditing(true)
+                setSaved(false)
+                setClosedNotice(false)
+              }}
+            >
+              <PencilIcon data-icon="inline-start" />
+              Edytuj zlecenie
+            </Button>
+            {request.status !== "closed" && (
+              <Button
+                type="button"
+                onClick={handleClose}
+                disabled={closing}
+              >
+                <CircleCheckBigIcon data-icon="inline-start" />
+                {closing ? "Zamykanie…" : "Zamknij zlecenie"}
+              </Button>
+            )}
+          </div>
         )}
       </header>
 
@@ -378,6 +426,13 @@ function RequestDetailsView() {
         <div className="flex items-center gap-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300">
           <CheckCircle2Icon className="size-4 shrink-0" />
           Zmiany zostały zapisane.
+        </div>
+      )}
+
+      {closedNotice && (
+        <div className="flex items-center gap-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300">
+          <CheckCircle2Icon className="size-4 shrink-0" />
+          Zlecenie zostało zamknięte.
         </div>
       )}
 
