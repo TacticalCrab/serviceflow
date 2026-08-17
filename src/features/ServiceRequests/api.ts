@@ -17,6 +17,7 @@ type ServiceRequest = ServiceRequestPayload & {
   id: number
   status: ServiceStatus
   createdAt: string
+  statusChangedAt: string
 }
 
 function serializeFormValues(values: FormSchema): ServiceRequestPayload {

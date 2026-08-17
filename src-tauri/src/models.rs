@@ -76,6 +76,7 @@ pub struct ServiceRequest {
     pub id: i64,
     pub status: String,
     pub created_at: String,
+    pub status_changed_at: String,
     #[serde(flatten)]
     pub request: NewServiceRequest,
 }

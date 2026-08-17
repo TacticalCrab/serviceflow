@@ -35,6 +35,7 @@ fn deserialize_request(
     id: i64,
     status: String,
     created_at: String,
+    status_changed_at: String,
     payload: String,
 ) -> Result<ServiceRequest, String> {
     let request = serde_json::from_str(&payload)
@@ -44,6 +45,7 @@ fn deserialize_request(
         id,
         status,
         created_at,
+        status_changed_at,
         request,
     })
 }
@@ -51,7 +53,7 @@ fn deserialize_request(
 fn find_by_id(connection: &Connection, id: i64) -> Result<Option<ServiceRequest>, String> {
     let row = connection
         .query_row(
-            "SELECT id, status, created_at, payload FROM service_requests WHERE id = ?1",
+            "SELECT id, status, created_at, status_changed_at, payload FROM service_requests WHERE id = ?1",
             [id],
             |row| {
                 Ok((
@@ -59,14 +61,15 @@ fn find_by_id(connection: &Connection, id: i64) -> Result<Option<ServiceRequest>
                     row.get::<_, String>(1)?,
                     row.get::<_, String>(2)?,
                     row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
                 ))
             },
         )
         .optional()
         .map_err(|error| format!("Nie udało się pobrać zlecenia: {error}"))?;
 
-    row.map(|(id, status, created_at, payload)| {
-        deserialize_request(id, status, created_at, payload)
+    row.map(|(id, status, created_at, status_changed_at, payload)| {
+        deserialize_request(id, status, created_at, status_changed_at, payload)
     })
     .transpose()
 }
@@ -143,7 +146,12 @@ fn update_request(
 fn close_request(connection: &Connection, id: i64) -> Result<ServiceRequest, String> {
     connection
         .execute(
-            "UPDATE service_requests SET status = 'closed' WHERE id = ?1",
+            "
+            UPDATE service_requests
+            SET status = 'closed',
+                status_changed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            WHERE id = ?1
+            ",
             [id],
         )
         .map_err(|error| format!("Nie udało się zamknąć zlecenia: {error}"))?;
@@ -154,7 +162,12 @@ fn close_request(connection: &Connection, id: i64) -> Result<ServiceRequest, Str
 fn reopen_request(connection: &Connection, id: i64) -> Result<ServiceRequest, String> {
     connection
         .execute(
-            "UPDATE service_requests SET status = 'in_progress' WHERE id = ?1",
+            "
+            UPDATE service_requests
+            SET status = 'in_progress',
+                status_changed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            WHERE id = ?1
+            ",
             [id],
         )
         .map_err(|error| format!("Nie udało się wznowić zlecenia: {error}"))?;
@@ -166,7 +179,7 @@ fn find_all(connection: &Connection) -> Result<Vec<ServiceRequest>, String> {
     let mut statement = connection
         .prepare(
             "
-            SELECT id, status, created_at, payload
+            SELECT id, status, created_at, status_changed_at, payload
             FROM service_requests
             ORDER BY created_at DESC, id DESC
             ",
@@ -179,15 +192,22 @@ fn find_all(connection: &Connection) -> Result<Vec<ServiceRequest>, String> {
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
             ))
         })
         .map_err(|error| format!("Nie udało się pobrać listy zleceń: {error}"))?;
 
     let mut requests = Vec::new();
     for row in rows {
-        let (id, status, created_at, payload) =
+        let (id, status, created_at, status_changed_at, payload) =
             row.map_err(|error| format!("Nie udało się odczytać zlecenia: {error}"))?;
-        requests.push(deserialize_request(id, status, created_at, payload)?);
+        requests.push(deserialize_request(
+            id,
+            status,
+            created_at,
+            status_changed_at,
+            payload,
+        )?);
     }
 
     Ok(requests)

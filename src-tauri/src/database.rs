@@ -22,7 +22,8 @@ impl Database {
                 device_name TEXT NOT NULL,
                 status TEXT NOT NULL DEFAULT 'in_progress',
                 payload TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+                created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+                status_changed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
             );
 
             CREATE INDEX IF NOT EXISTS idx_service_requests_created_at
@@ -34,6 +35,33 @@ impl Database {
             SET status = 'in_progress'
             WHERE status = 'new';
             ",
+        )?;
+
+        let has_status_changed_at = {
+            let mut statement = connection.prepare("PRAGMA table_info(service_requests)")?;
+            let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+            let mut found = false;
+
+            for column in columns {
+                if column? == "status_changed_at" {
+                    found = true;
+                    break;
+                }
+            }
+
+            found
+        };
+
+        if !has_status_changed_at {
+            connection.execute(
+                "ALTER TABLE service_requests ADD COLUMN status_changed_at TEXT",
+                [],
+            )?;
+        }
+
+        connection.execute(
+            "UPDATE service_requests SET status_changed_at = created_at WHERE status_changed_at IS NULL",
+            [],
         )?;
 
         Ok(Self {
