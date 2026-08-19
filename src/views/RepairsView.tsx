@@ -102,6 +102,7 @@ function requestMatchesSearch(request: ServiceRequest, query: string) {
     request.client.email,
     request.client.address,
     request.device.name,
+    request.device.manufacturer,
     request.device.model,
     request.device.serialNumber,
     request.device.defect,
@@ -352,9 +353,12 @@ function RepairsView() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="font-medium">{request.device.name}</div>
-                        {(request.device.model || request.device.serialNumber) && (
+                        {(request.device.manufacturer ||
+                          request.device.model ||
+                          request.device.serialNumber) && (
                           <div className="text-xs text-muted-foreground">
                             {[
+                              request.device.manufacturer,
                               request.device.model,
                               request.device.serialNumber
                                 ? `S/N: ${request.device.serialNumber}`

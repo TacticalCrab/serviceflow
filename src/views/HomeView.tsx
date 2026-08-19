@@ -157,6 +157,7 @@ function ScheduledTransportCard({
     .join(" ")
   const deviceName = [
     request.device.name,
+    request.device.manufacturer,
     request.device.model,
     request.device.serialNumber ? `S/N: ${request.device.serialNumber}` : undefined,
   ]

@@ -14,6 +14,7 @@ import {
   ArrowLeftIcon,
   CheckCircle2Icon,
   CircleCheckBigIcon,
+  FileTextIcon,
   LoaderCircleIcon,
   PencilIcon,
   RotateCcwIcon,
@@ -155,6 +156,7 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
         <CardContent>
           <dl className="grid gap-5 sm:grid-cols-2">
             <DetailItem label="Nazwa" value={request.device.name} />
+            <DetailItem label="Producent" value={request.device.manufacturer} />
             <DetailItem label="Model" value={request.device.model} />
             <DetailItem label="Numer seryjny" value={request.device.serialNumber} />
             <div className="sm:col-span-2">
@@ -509,6 +511,14 @@ function RequestDetailsView() {
             </Button>
           ) : (
             <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<Link to={`/naprawy/${request.id}/karta-naprawy`} />}
+              >
+                <FileTextIcon data-icon="inline-start" />
+                Karta naprawy
+              </Button>
               <Button
                 type="button"
                 variant="outline"

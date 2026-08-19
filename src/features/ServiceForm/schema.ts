@@ -26,6 +26,7 @@ const formSchema = z.object({
     }),
     device: z.object({
         name: z.string().min(1, "Nazwa jest wymagana"),
+        manufacturer: z.string().optional(),
         model: z.string().optional(),
         serialNumber: z.string().optional(),
         defect: z.string().optional(),

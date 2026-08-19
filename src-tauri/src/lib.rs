@@ -25,6 +25,8 @@ pub fn run() {
             commands::reopen_service_request,
             commands::update_service_request_status,
             commands::delete_service_request,
+            commands::get_firm_settings,
+            commands::save_firm_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

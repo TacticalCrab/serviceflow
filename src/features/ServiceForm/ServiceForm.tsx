@@ -66,6 +66,7 @@ function createDefaultValues(values?: FormSchema): FormSchema {
     },
     device: {
       name: values?.device.name ?? "",
+      manufacturer: values?.device.manufacturer,
       model: values?.device.model,
       serialNumber: values?.device.serialNumber,
       defect: values?.device.defect,
@@ -165,8 +166,9 @@ function ServiceForm({
   submitLabel = "Zapisz zlecenie",
   title = "Nowe zlecenie serwisowe",
 }: ServiceFormProps) {
+  const [formDefaults] = useState(() => createDefaultValues(defaultValues))
   const form = useForm({
-    defaultValues: createDefaultValues(defaultValues),
+    defaultValues: formDefaults,
     validators: {
       onSubmit: schema,
     },
@@ -516,6 +518,30 @@ function ServiceForm({
                         onChange={(event) => field.handleChange(event.target.value)}
                         aria-invalid={isInvalid}
                         placeholder="Np. ekspres do kawy"
+                      />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+
+              <form.Field name="device.manufacturer">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Producent</FieldLabel>
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) =>
+                          field.handleChange(optionalText(event.target.value))
+                        }
+                        aria-invalid={isInvalid}
+                        placeholder="Np. Hendi"
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>

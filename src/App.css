@@ -143,3 +143,55 @@
     @apply bg-primary/20 text-foreground;
   }
 }
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .repair-card-view,
+  .repair-card-workspace,
+  .repair-card-preview-column {
+    display: block !important;
+    margin: 0 !important;
+  }
+
+  .repair-card-preview-shell {
+    display: block !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: white !important;
+  }
+
+  .repair-card-document {
+    width: 210mm !important;
+    max-width: none !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    break-after: avoid-page;
+  }
+}

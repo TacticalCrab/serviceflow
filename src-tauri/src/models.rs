@@ -43,11 +43,67 @@ pub struct Client {
 pub struct Device {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manufacturer: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub serial_number: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub defect: Option<String>,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DocumentFont {
+    #[default]
+    TimesNewRoman,
+    Georgia,
+    Arial,
+    Geist,
+}
+
+impl DocumentFont {
+    pub fn as_storage_value(self) -> &'static str {
+        match self {
+            Self::TimesNewRoman => "times_new_roman",
+            Self::Georgia => "georgia",
+            Self::Arial => "arial",
+            Self::Geist => "geist",
+        }
+    }
+
+    pub fn from_storage_value(value: &str) -> Self {
+        match value {
+            "georgia" => Self::Georgia,
+            "arial" => Self::Arial,
+            "geist" => Self::Geist,
+            _ => Self::TimesNewRoman,
+        }
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FirmSettings {
+    pub company_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub street: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub postal_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub city: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tax_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub phone: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub email: Option<String>,
+    #[serde(default)]
+    pub document_font: DocumentFont,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stamp_data_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
