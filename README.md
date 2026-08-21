@@ -126,6 +126,26 @@ The default installer checks for WebView2 and downloads its bootstrapper when ne
 
 Unsigned installers can trigger Microsoft Defender SmartScreen warnings. Code-sign installers before distributing them publicly; see [Tauri's Windows code-signing guide](https://v2.tauri.app/distribute/sign/windows/).
 
+### Android APK
+
+Initialize the Android project once, then use the signing script from PowerShell:
+
+```powershell
+npm run tauri -- android init
+.\build-signed-apk.ps1
+```
+
+By default, the script uses `%USERPROFILE%\upload-keystore.jks`, the `upload` key alias, and writes `app-universal-release-signed.apk` in the repository root. Override these values when needed:
+
+```powershell
+.\build-signed-apk.ps1 `
+  -KeystorePath C:\keys\release.jks `
+  -KeyAlias release `
+  -OutputPath .\serviceflow-release.apk
+```
+
+The script builds the universal release APK, finds the newest Android SDK Build Tools, aligns the APK, signs it, and verifies both the signature and alignment. It asks for the keystore password interactively. For non-interactive builds, provide passwords through the `ANDROID_KEYSTORE_PASSWORD` and optional `ANDROID_KEY_PASSWORD` environment variables; do not commit them to the repository.
+
 ### Linux packages
 
 Run this command inside Ubuntu 22.04, Debian 12 or another supported Linux build environment:

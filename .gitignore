@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+/app-universal-release-signed.apk
+/app-universal-release-signed.apk.idsig
 
 # Editor directories and files
 .vscode/*
