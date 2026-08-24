@@ -340,7 +340,10 @@ function RepairsView() {
                 <tbody className="divide-y divide-border">
                   {filteredRequests.map((request) => (
                     <tr key={request.id} className="transition-colors hover:bg-muted/30">
-                      <td className="px-4 py-3 font-medium">#{request.id}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <span className="text-muted-foreground/70">#</span>
+                        {request.id}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="font-medium">
                           {request.client.name} {request.client.surname}

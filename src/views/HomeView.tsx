@@ -217,7 +217,10 @@ function ScheduledTransportCard({
             </span>
             <div className="min-w-0 flex-1 space-y-1">
               <CardTitle>{transportDetails.title}</CardTitle>
-              <CardDescription>Zlecenie #{request.id}</CardDescription>
+              <CardDescription>
+                Zlecenie <span className="text-muted-foreground/70">#</span>
+                {request.id}
+              </CardDescription>
             </div>
             <ArrowRightIcon className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           </div>

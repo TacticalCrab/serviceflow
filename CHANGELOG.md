@@ -9,3 +9,4 @@ Second version after feedback
 - Update: add not established to service request client preferences, timeframes and time
 - Fix: Include only esitmated price into service card.
 - Feautre: Default value inputs & editor
+- Update: grayout hashtag in request id

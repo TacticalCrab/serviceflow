@@ -502,7 +502,10 @@ function RequestDetailsView() {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight">Zlecenie #{request.id}</h1>
+              <h1 className="text-3xl font-semibold tracking-tight">
+                Zlecenie <span className="text-muted-foreground/70">#</span>
+                {request.id}
+              </h1>
               <span
                 className={cn(
                   "rounded-full px-2 py-1 text-xs font-medium",
