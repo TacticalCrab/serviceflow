@@ -204,6 +204,11 @@ function ServiceForm({
       id={formId}
       className={cn("w-full", className)}
       noValidate
+      onKeyDownCapture={(event) => {
+        if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+          event.preventDefault()
+        }
+      }}
       onSubmit={(event) => {
         event.preventDefault()
         event.stopPropagation()
@@ -1043,6 +1048,16 @@ function ServiceForm({
                                       value={stepField.state.value}
                                       onBlur={stepField.handleBlur}
                                       onChange={(event) => stepField.handleChange(event.target.value)}
+                                      onKeyDown={(event) => {
+                                        if (event.key !== "Enter") return
+
+                                        event.preventDefault()
+                                        const nextIndex = index + 1
+                                        field.insertValue(nextIndex, "")
+                                        window.requestAnimationFrame(() => {
+                                          document.getElementById(`repairSteps[${nextIndex}]`)?.focus()
+                                        })
+                                      }}
                                       aria-invalid={isInvalid}
                                       placeholder={`Krok ${index + 1}`}
                                     />
@@ -1118,6 +1133,18 @@ function ServiceForm({
                                     onChange={(event) =>
                                       descriptionField.handleChange(event.target.value)
                                     }
+                                    onKeyDown={(event) => {
+                                      if (event.key !== "Enter") return
+
+                                      event.preventDefault()
+                                      const nextIndex = index + 1
+                                      field.insertValue(nextIndex, { description: "", price: 0 })
+                                      window.requestAnimationFrame(() => {
+                                        document
+                                          .getElementById(`additionalCosts[${nextIndex}].description`)
+                                          ?.focus()
+                                      })
+                                    }}
                                     aria-invalid={isInvalid}
                                     placeholder="Np. wymiana uszczelki"
                                   />
@@ -1151,6 +1178,18 @@ function ServiceForm({
                                         priceField.handleChange(
                                           value === "" ? Number.NaN : Number(value)
                                         )
+                                      }}
+                                      onKeyDown={(event) => {
+                                        if (event.key !== "Enter") return
+
+                                        event.preventDefault()
+                                        const nextIndex = index + 1
+                                        field.insertValue(nextIndex, { description: "", price: 0 })
+                                        window.requestAnimationFrame(() => {
+                                          document
+                                            .getElementById(`additionalCosts[${nextIndex}].description`)
+                                            ?.focus()
+                                        })
                                       }}
                                       aria-invalid={isInvalid}
                                       className="pr-11"

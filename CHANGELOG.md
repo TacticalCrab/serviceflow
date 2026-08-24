@@ -15,3 +15,4 @@ Second version after feedback
 - Update: add shadcn calendar inputs to every date time input, and enable manual date input
 - Update: change the order of blocks in service request
 - Update: Naprawy view, add ordering, fresh view, configuration for statuses, saving state between views, more columns to display, more actions, and context window with actions.
+- Update: list component add new row on Enter click & disable Enter submit in request edition

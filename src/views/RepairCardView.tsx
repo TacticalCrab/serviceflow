@@ -294,6 +294,18 @@ function RepairCardView() {
     }))
   }
 
+  function insertRepairStep(index: number) {
+    pendingStepFocusRef.current = index + 1
+    setData((current) => ({
+      ...current,
+      performedActions: [
+        ...current.performedActions.slice(0, index + 1),
+        "",
+        ...current.performedActions.slice(index + 1),
+      ],
+    }))
+  }
+
   function updateRepairStep(index: number, value: string) {
     setData((current) => ({
       ...current,
@@ -433,7 +445,15 @@ function RepairCardView() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="grid gap-5" onSubmit={(event) => event.preventDefault()}>
+              <form
+                className="grid gap-5"
+                onKeyDownCapture={(event) => {
+                  if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+                    event.preventDefault()
+                  }
+                }}
+                onSubmit={(event) => event.preventDefault()}
+              >
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                   <FormField id="repair-card-place" label="Miejscowość">
                     <Input
@@ -549,6 +569,12 @@ function RepairCardView() {
                                   onChange={(event) =>
                                     updateRepairStep(index, event.target.value)
                                   }
+                                  onKeyDown={(event) => {
+                                    if (event.key !== "Enter") return
+
+                                    event.preventDefault()
+                                    insertRepairStep(index)
+                                  }}
                                   placeholder={`Krok ${index + 1}`}
                                 />
                               </div>
