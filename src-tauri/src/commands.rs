@@ -80,7 +80,7 @@ fn deserialize_request(
 fn find_by_id(connection: &Connection, id: i64) -> Result<Option<ServiceRequest>, String> {
     let row = connection
         .query_row(
-            "SELECT id, status, created_at, status_changed_at, payload FROM service_requests WHERE id = ?1",
+            "SELECT id, status, created_at, COALESCE(status_changed_at, created_at), payload FROM service_requests WHERE id = ?1",
             [id],
             |row| {
                 Ok((
@@ -222,7 +222,7 @@ fn find_all(connection: &Connection) -> Result<Vec<ServiceRequest>, String> {
     let mut statement = connection
         .prepare(
             "
-            SELECT id, status, created_at, status_changed_at, payload
+            SELECT id, status, created_at, COALESCE(status_changed_at, created_at), payload
             FROM service_requests
             ORDER BY created_at DESC, id DESC
             ",

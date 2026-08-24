@@ -27,3 +27,4 @@ Second version after feedback
 - Feature: scroll into view on form validation error & minor changes
 - Feature: order of columns in table of repairs
 - Feature: presets & minor changes
+- Feature: configuration for capitalized input values & minor changes

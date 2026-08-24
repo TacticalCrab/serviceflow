@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Card,
   CardContent,
@@ -51,6 +52,10 @@ import {
   saveAppFontSize,
   useAppFontSize,
 } from "@/features/DisplaySettings/fontSize"
+import {
+  saveInputCapitalization,
+  useInputCapitalization,
+} from "@/features/DisplaySettings/inputCapitalization"
 import {
   normalizeDeviceProducers,
   saveDeviceProducers,
@@ -114,6 +119,7 @@ function ConfigurationView() {
   const configuredProducers = useDeviceProducers()
   const configuredSteps = useServiceSteps()
   const configuredFontSize = useAppFontSize()
+  const configuredInputCapitalization = useInputCapitalization()
   const configuredColumnOrder = useRepairsTableColumnOrder()
   const [order, setOrder] = useState(configuredOrder)
   const [producers, setProducers] = useState(configuredProducers)
@@ -121,12 +127,14 @@ function ConfigurationView() {
   const [newProducer, setNewProducer] = useState("")
   const [newStep, setNewStep] = useState("")
   const [fontSize, setFontSize] = useState(configuredFontSize)
+  const [inputCapitalization, setInputCapitalization] = useState(configuredInputCapitalization)
   const [columnOrder, setColumnOrder] = useState(configuredColumnOrder)
   const [activeColumn, setActiveColumn] = useState<RepairsTableColumn | null>(null)
   const [saving, setSaving] = useState(false)
   const [savingProducers, setSavingProducers] = useState(false)
   const [savingSteps, setSavingSteps] = useState(false)
   const [savingFontSize, setSavingFontSize] = useState(false)
+  const [savingInputCapitalization, setSavingInputCapitalization] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const statusDirty = order.some((status, index) => status !== configuredOrder[index])
@@ -137,6 +145,7 @@ function ConfigurationView() {
     JSON.stringify(normalizeServiceSteps(steps)) !==
     JSON.stringify(normalizeServiceSteps(configuredSteps))
   const fontSizeDirty = fontSize !== configuredFontSize
+  const inputCapitalizationDirty = inputCapitalization !== configuredInputCapitalization
   const columnOrderDirty = JSON.stringify(columnOrder) !== JSON.stringify(configuredColumnOrder)
   const columnOrderIsDefault =
     JSON.stringify(columnOrder) === JSON.stringify(defaultRepairsTableColumnOrder)
@@ -160,6 +169,9 @@ function ConfigurationView() {
   useEffect(() => {
     setFontSize(configuredFontSize)
   }, [configuredFontSize])
+  useEffect(() => {
+    setInputCapitalization(configuredInputCapitalization)
+  }, [configuredInputCapitalization])
   useEffect(() => { setColumnOrder(configuredColumnOrder) }, [configuredColumnOrder])
 
   function handleDragEnd({ active, over }: DragEndEvent) {
@@ -291,6 +303,26 @@ function ConfigurationView() {
     }
   }
 
+  async function handleSaveInputCapitalization() {
+    setSavingInputCapitalization(true)
+    setError(null)
+    setSaved(false)
+
+    try {
+      const savedValue = await saveInputCapitalization(inputCapitalization)
+      setInputCapitalization(savedValue)
+      setSaved(true)
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Nie udało się zapisać ustawienia wielkich liter."
+      )
+    } finally {
+      setSavingInputCapitalization(false)
+    }
+  }
+
   return (
     <section className="space-y-6">
       <header>
@@ -356,6 +388,36 @@ function ConfigurationView() {
                 {savingFontSize && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
                 {savingFontSize ? "Zapisywanie…" : "Zapisz rozmiar"}
               </Button>
+            </div>
+            <div className="space-y-3 border-t pt-3">
+              <label htmlFor="capitalize-input-first-letter" className="flex cursor-pointer items-start gap-3">
+                <Checkbox
+                  id="capitalize-input-first-letter"
+                  checked={inputCapitalization}
+                  onCheckedChange={(checked) => {
+                    setSaved(false)
+                    setInputCapitalization(checked === true)
+                  }}
+                />
+                <span className="grid gap-1">
+                  <span className="text-sm font-medium">Rozpoczynaj tekst wielką literą</span>
+                  <span className="text-sm text-muted-foreground">
+                    Automatycznie poprawia pierwszą literę w polach tekstowych. Nie dotyczy adresów e-mail, telefonów, kwot ani dat.
+                  </span>
+                </span>
+              </label>
+              {inputCapitalizationDirty && (
+                <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+                  <CircleAlertIcon className="size-4 shrink-0" />
+                  Zmieniono ustawienie wielkich liter. Zapisz tę sekcję.
+                </div>
+              )}
+              <div className="flex justify-end">
+                <Button type="button" size="sm" onClick={() => void handleSaveInputCapitalization()} disabled={savingInputCapitalization || !inputCapitalizationDirty}>
+                  {savingInputCapitalization && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
+                  {savingInputCapitalization ? "Zapisywanie…" : "Zapisz ustawienie"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
