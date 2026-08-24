@@ -32,6 +32,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { formatPhoneNumber } from "@/lib/phone"
+import {
+  finalPrice,
+  totalAdditionalExpenses,
+  totalIncludedInFinalPrice,
+} from "@/features/ServiceRequests/pricing"
 
 import { schema, type FormSchema } from "./schema"
 
@@ -90,7 +96,10 @@ function createDefaultValues(values?: FormSchema): FormSchema {
     repairTime: values?.repairTime,
     repairSteps: [...(values?.repairSteps ?? [])],
     additionalCosts:
-      values?.additionalCosts?.map((cost) => ({ ...cost })) ?? [],
+      values?.additionalCosts?.map((cost) => ({
+        ...cost,
+        includeInFinalPrice: cost.includeInFinalPrice ?? false,
+      })) ?? [],
     costEstimate: values?.costEstimate,
     note: values?.note,
   }
@@ -202,6 +211,18 @@ function ServiceForm({
       formApi.reset(value)
     },
   })
+
+  useEffect(() => {
+    function handleSaveShortcut(event: KeyboardEvent) {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") return
+
+      event.preventDefault()
+      void form.handleSubmit().catch(() => undefined)
+    }
+
+    window.addEventListener("keydown", handleSaveShortcut)
+    return () => window.removeEventListener("keydown", handleSaveShortcut)
+  }, [form])
 
   return (
     <form
@@ -363,11 +384,15 @@ function ServiceForm({
                         id={field.name}
                         name={field.name}
                         type="tel"
-                        value={field.state.value ?? ""}
+                        value={formatPhoneNumber(field.state.value)}
                         onBlur={field.handleBlur}
-                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                        onChange={(event) =>
+                          field.handleChange(optionalText(formatPhoneNumber(event.target.value)))
+                        }
                         aria-invalid={isInvalid}
-                        autoComplete="off"
+                        autoComplete="tel"
+                        inputMode="tel"
+                        placeholder="123 456 789"
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
@@ -1022,39 +1047,6 @@ function ServiceForm({
                 }}
               </form.Field>
 
-              <form.Field name="costEstimate">
-                {(field) => {
-                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
-
-                  return (
-                    <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>Szacowany koszt</FieldLabel>
-                      <div className="relative">
-                        <Input
-                          id={field.name}
-                          name={field.name}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={numberInputValue(field.state.value)}
-                          onBlur={field.handleBlur}
-                          onChange={(event) => {
-                            const value = event.target.value
-                            field.handleChange(value === "" ? undefined : Number(value))
-                          }}
-                          aria-invalid={isInvalid}
-                          className="pr-11"
-                          inputMode="decimal"
-                        />
-                        <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-sm text-muted-foreground">
-                          PLN
-                        </span>
-                      </div>
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                    </Field>
-                  )
-                }}
-              </form.Field>
             </FieldGroup>
 
             <form.Field name="repairSteps" mode="array">
@@ -1134,19 +1126,55 @@ function ServiceForm({
           </FieldSet>
 
           <FieldSet className="order-3 rounded-lg border p-4">
-            <FieldLegend>Dodatkowe koszty</FieldLegend>
+            <FieldLegend>Rozliczenie</FieldLegend>
+            <FieldDescription>
+              Robocizna jest podstawą kwoty dla klienta. Każdy wydatek pozostaje kosztem wewnętrznym, niezależnie od tego, czy zostanie doliczony do kwoty końcowej.
+            </FieldDescription>
+            <form.Field name="costEstimate">
+              {(field) => {
+                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field data-invalid={isInvalid} className="max-w-sm">
+                    <FieldLabel htmlFor={field.name}>Robocizna</FieldLabel>
+                    <div className="relative">
+                      <Input
+                        id={field.name}
+                        name={field.name}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={numberInputValue(field.state.value)}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => {
+                          const value = event.target.value
+                          field.handleChange(value === "" ? undefined : Number(value))
+                        }}
+                        aria-invalid={isInvalid}
+                        className="pr-11"
+                        inputMode="decimal"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-sm text-muted-foreground">
+                        PLN
+                      </span>
+                    </div>
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            </form.Field>
             <form.Field name="additionalCosts" mode="array">
               {(field) => (
                 <Field>
                   <div className="flex items-center justify-between gap-3">
                     <FieldDescription>
-                      Uwzględnij części, materiały i inne opłaty poza wyceną podstawową.
+                      Dodaj części, materiały i inne wydatki związane z naprawą.
                     </FieldDescription>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => field.pushValue({ description: "", price: 0 })}
+                      onClick={() => field.pushValue({ description: "", price: 0, includeInFinalPrice: true })}
                     >
                       <PlusIcon data-icon="inline-start" />
                       Dodaj koszt
@@ -1162,7 +1190,7 @@ function ServiceForm({
                       {(field.state.value ?? []).map((_, index) => (
                         <div
                           key={index}
-                          className="grid grid-cols-1 items-start gap-3 rounded-lg bg-muted/50 p-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto]"
+                          className="grid grid-cols-1 items-start gap-3 rounded-lg bg-muted/50 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
                         >
                           <form.Field name={`additionalCosts[${index}].description`}>
                             {(descriptionField) => {
@@ -1186,7 +1214,7 @@ function ServiceForm({
 
                                       event.preventDefault()
                                       const nextIndex = index + 1
-                                      field.insertValue(nextIndex, { description: "", price: 0 })
+                                      field.insertValue(nextIndex, { description: "", price: 0, includeInFinalPrice: true })
                                       window.requestAnimationFrame(() => {
                                         document
                                           .getElementById(`additionalCosts[${nextIndex}].description`)
@@ -1210,7 +1238,7 @@ function ServiceForm({
                                 priceField.state.meta.isTouched && !priceField.state.meta.isValid
 
                               return (
-                                <Field data-invalid={isInvalid}>
+                                <Field data-invalid={isInvalid} className="sm:col-start-1 sm:row-start-2">
                                   <FieldLabel htmlFor={priceField.name}>Cena</FieldLabel>
                                   <div className="relative">
                                     <Input
@@ -1232,7 +1260,7 @@ function ServiceForm({
 
                                         event.preventDefault()
                                         const nextIndex = index + 1
-                                        field.insertValue(nextIndex, { description: "", price: 0 })
+                                        field.insertValue(nextIndex, { description: "", price: 0, includeInFinalPrice: true })
                                         window.requestAnimationFrame(() => {
                                           document
                                             .getElementById(`additionalCosts[${nextIndex}].description`)
@@ -1253,11 +1281,29 @@ function ServiceForm({
                             }}
                           </form.Field>
 
+                          <div className="space-y-2 sm:col-start-1 sm:row-start-3">
+                            <form.Field name={`additionalCosts[${index}].includeInFinalPrice`}>
+                              {(includedField) => (
+                                <Field orientation="horizontal">
+                                  <Checkbox
+                                    id={includedField.name}
+                                    checked={includedField.state.value ?? false}
+                                    onCheckedChange={includedField.handleChange}
+                                    onBlur={includedField.handleBlur}
+                                  />
+                                  <FieldLabel htmlFor={includedField.name}>
+                                    Wlicz do kwoty końcowej
+                                  </FieldLabel>
+                                </Field>
+                              )}
+                            </form.Field>
+                          </div>
+
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="sm:mt-6"
+                            className="sm:col-start-2 sm:row-span-3 sm:mt-0"
                             onClick={() => field.removeValue(index)}
                             aria-label={`Usuń dodatkowy koszt ${index + 1}`}
                           >
@@ -1270,6 +1316,27 @@ function ServiceForm({
                 </Field>
               )}
             </form.Field>
+            <form.Subscribe selector={(state) => state.values}>
+              {(values) => {
+                const expenses = totalAdditionalExpenses(values.additionalCosts)
+                const includedCosts = totalIncludedInFinalPrice(values.additionalCosts)
+                const total = finalPrice(values.costEstimate, values.additionalCosts)
+
+                return (
+                  <div className="grid gap-2 rounded-lg bg-muted/50 p-3 text-sm sm:grid-cols-2">
+                    <div>
+                      Wydatki: <span className="font-medium tabular-nums">{expenses.toFixed(2)} PLN</span>
+                    </div>
+                    <div>
+                      Wliczone wydatki: <span className="font-medium tabular-nums">{includedCosts.toFixed(2)} PLN</span>
+                    </div>
+                    <div className="text-base font-semibold sm:col-span-2">
+                      Kwota końcowa: {total === undefined ? "—" : `${total.toFixed(2)} PLN`}
+                    </div>
+                  </div>
+                )
+              }}
+            </form.Subscribe>
           </FieldSet>
         </CardContent>
 

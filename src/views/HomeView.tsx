@@ -40,6 +40,7 @@ import {
   type ServiceRequest,
 } from "@/features/ServiceRequests/api"
 import { isActiveServiceStatus } from "@/features/ServiceRequests/status"
+import { finalPrice, totalAdditionalExpenses } from "@/features/ServiceRequests/pricing"
 import { cn } from "@/lib/utils"
 
 function isDateInPeriod(value: string, from: Date, to: Date) {
@@ -298,16 +299,13 @@ function HomeView() {
         isDateInPeriod(request.statusChangedAt, periodStart, periodEnd)
     )
     const revenue = completed.reduce(
-      (sum, request) => sum + (request.costEstimate ?? 0),
+      (sum, request) => sum + (finalPrice(request.costEstimate, request.additionalCosts) ?? 0),
       0
     )
     const costs = completed.reduce(
       (sum, request) =>
         sum +
-        (request.additionalCosts?.reduce(
-          (costSum, additionalCost) => costSum + additionalCost.price,
-          0
-        ) ?? 0),
+        totalAdditionalExpenses(request.additionalCosts),
       0
     )
     const today = startOfDay(new Date())

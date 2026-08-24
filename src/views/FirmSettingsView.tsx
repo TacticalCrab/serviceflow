@@ -51,6 +51,7 @@ import {
   firmSettingsSchema,
   prepareFirmSettingsForSave,
 } from "@/features/FirmSettings/schema"
+import { formatPhoneNumber } from "@/lib/phone"
 
 const MAX_STAMP_FILE_SIZE = 2 * 1024 * 1024
 const ACCEPTED_STAMP_TYPES = new Set(["image/png", "image/jpeg", "image/webp"])
@@ -283,7 +284,7 @@ function FirmSettingsView() {
                   }}
                 </form.Field>
 
-                <form.Field name="ownerName">
+              <form.Field name="ownerName">
                   {(field) => {
                     const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
 
@@ -428,13 +429,15 @@ function FirmSettingsView() {
                           id={field.name}
                           name={field.name}
                           type="tel"
-                          value={field.state.value ?? ""}
+                          value={formatPhoneNumber(field.state.value)}
                           onBlur={field.handleBlur}
                           onChange={(event) =>
-                            field.handleChange(optionalText(event.target.value))
+                            field.handleChange(optionalText(formatPhoneNumber(event.target.value)))
                           }
                           aria-invalid={isInvalid}
-                          autoComplete="off"
+                          autoComplete="tel"
+                          inputMode="tel"
+                          placeholder="123 456 789"
                         />
                         {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>

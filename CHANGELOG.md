@@ -21,3 +21,6 @@ Second version after feedback
 - Feature: service steps switch and configuration
 - Feature: font size configuration
 - Feature: settings dropdown & configuration layout
+- Feature: new price calculations
+- Update: phone number format
+- Update: CTRL + S to save service form

@@ -43,7 +43,7 @@ fn validate_request(request: &NewServiceRequest) -> Result<(), String> {
     }
 
     if request.cost_estimate.is_some_and(|cost| cost < 0.0) {
-        return Err("Szacowany koszt nie może być ujemny".into());
+        return Err("Robocizna nie może być ujemna".into());
     }
 
     if let Some(costs) = &request.additional_costs {

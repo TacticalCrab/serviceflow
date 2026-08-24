@@ -59,7 +59,9 @@ import {
   serviceStatusLabels,
 } from "@/features/ServiceRequests/status"
 import { useOrderedServiceStatuses } from "@/features/ServiceRequests/statusOrder"
+import { finalPrice, totalAdditionalExpenses } from "@/features/ServiceRequests/pricing"
 import { cn } from "@/lib/utils"
+import { formatPhoneNumber } from "@/lib/phone"
 
 type StatusFilter = ServiceStatus | "active" | "all"
 type SortDirection = "desc" | "asc" | null
@@ -90,8 +92,8 @@ const tableColumnOptions: Array<{ id: TableColumnId; label: string }> = [
   { id: "serialNumber", label: "Numer seryjny" },
   { id: "defect", label: "Opis usterki" },
   { id: "repairTime", label: "Czas naprawy" },
-  { id: "estimate", label: "Wycena" },
-  { id: "additionalCosts", label: "Dodatkowe koszty" },
+  { id: "estimate", label: "Kwota końcowa" },
+  { id: "additionalCosts", label: "Wydatki" },
   { id: "status", label: "Status" },
   { id: "checkIn", label: "Przyjęcie sprzętu" },
   { id: "checkOut", label: "Zwrot sprzętu" },
@@ -195,7 +197,7 @@ function additionalCostsTotal(request: ServiceRequest) {
   const costs = request.additionalCosts ?? []
   if (!costs.length) return "—"
 
-  return formatCost(costs.reduce((total, cost) => total + cost.price, 0))
+  return formatCost(totalAdditionalExpenses(costs))
 }
 
 function sortableValue(
@@ -223,9 +225,9 @@ function sortableValue(
     case "repairTime":
       return request.repairTime ?? ""
     case "estimate":
-      return request.costEstimate ?? -1
+      return finalPrice(request.costEstimate, request.additionalCosts) ?? -1
     case "additionalCosts":
-      return (request.additionalCosts ?? []).reduce((total, cost) => total + cost.price, 0)
+      return totalAdditionalExpenses(request.additionalCosts)
     case "status":
       return statusOrder.indexOf(request.status)
     case "checkIn":
@@ -312,6 +314,8 @@ function requestMatchesSearch(request: ServiceRequest, query: string) {
     request.repairTime,
     request.costEstimate,
     formatCost(request.costEstimate),
+    finalPrice(request.costEstimate, request.additionalCosts),
+    formatCost(finalPrice(request.costEstimate, request.additionalCosts)),
     ...(request.repairSteps ?? []),
     ...(request.additionalCosts?.flatMap((cost) => [cost.description, cost.price]) ?? []),
     searchableDate(request.createdAt),
@@ -664,8 +668,8 @@ function RepairsView() {
                     {visibleColumns.serialNumber && <th className="px-4 py-3" aria-sort={sortColumn === "serialNumber" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Numer seryjny" column="serialNumber" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.defect && <th className="px-4 py-3" aria-sort={sortColumn === "defect" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Opis usterki" column="defect" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.repairTime && <th className="px-4 py-3" aria-sort={sortColumn === "repairTime" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Czas naprawy" column="repairTime" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
-                    {visibleColumns.estimate && <th className="px-4 py-3" aria-sort={sortColumn === "estimate" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Wycena" column="estimate" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
-                    {visibleColumns.additionalCosts && <th className="px-4 py-3" aria-sort={sortColumn === "additionalCosts" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Dodatkowe koszty" column="additionalCosts" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.estimate && <th className="px-4 py-3" aria-sort={sortColumn === "estimate" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Kwota końcowa" column="estimate" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.additionalCosts && <th className="px-4 py-3" aria-sort={sortColumn === "additionalCosts" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Wydatki" column="additionalCosts" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.checkIn && <th className="px-4 py-3" aria-sort={sortColumn === "checkIn" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Przyjęcie" column="checkIn" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.checkOut && <th className="px-4 py-3" aria-sort={sortColumn === "checkOut" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Zwrot" column="checkOut" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.createdAt && <th className="px-4 py-3" aria-sort={sortColumn === "createdAt" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Utworzono" column="createdAt" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
@@ -700,11 +704,11 @@ function RepairsView() {
                         </div>
                         {request.client.phone && (
                           <div className="text-xs text-muted-foreground">
-                            {request.client.phone}
+                            {formatPhoneNumber(request.client.phone)}
                           </div>
                         )}
                       </td>}
-                      {visibleColumns.phone && <td className="whitespace-nowrap px-4 py-3">{request.client.phone ?? "—"}</td>}
+                      {visibleColumns.phone && <td className="whitespace-nowrap px-4 py-3">{request.client.phone ? formatPhoneNumber(request.client.phone) : "—"}</td>}
                       {visibleColumns.device && <td className="px-4 py-3">
                         <div className="font-medium">{request.device.name}</div>
                         {(request.device.manufacturer ||
@@ -729,7 +733,7 @@ function RepairsView() {
                       {visibleColumns.defect && <td className="max-w-64 px-4 py-3 text-muted-foreground">{request.device.defect ?? "—"}</td>}
                       {visibleColumns.repairTime && <td className="whitespace-nowrap px-4 py-3">{request.repairTime ?? "—"}</td>}
                       {visibleColumns.estimate && <td className="px-4 py-3 tabular-nums">
-                        {formatCost(request.costEstimate)}
+                        {formatCost(finalPrice(request.costEstimate, request.additionalCosts))}
                       </td>}
                       {visibleColumns.additionalCosts && <td className="px-4 py-3 tabular-nums">{additionalCostsTotal(request)}</td>}
                       {visibleColumns.checkIn && <td className="max-w-56 px-4 py-3 text-muted-foreground">{formatTransport(request, "checkIn")}</td>}

@@ -1,5 +1,6 @@
 import type { FirmSettings } from "@/features/FirmSettings/api"
 import type { ServiceRequest } from "@/features/ServiceRequests/api"
+import { finalPrice } from "@/features/ServiceRequests/pricing"
 
 type RepairCardData = {
   issuePlace: string
@@ -222,8 +223,10 @@ function createRepairCardData(
   settings: FirmSettings,
   request?: ServiceRequest | null
 ): RepairCardData {
-  const amount =
-    request?.costEstimate !== undefined ? editableAmount(request.costEstimate) : ""
+  const calculatedFinalPrice = request
+    ? finalPrice(request.costEstimate, request.additionalCosts)
+    : undefined
+  const amount = calculatedFinalPrice !== undefined ? editableAmount(calculatedFinalPrice) : ""
 
   return {
     issuePlace: settings.city?.trim() ?? "",

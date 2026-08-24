@@ -128,6 +128,8 @@ pub struct FirmSettings {
 pub struct AdditionalCost {
     pub description: String,
     pub price: f64,
+    #[serde(default)]
+    pub include_in_final_price: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

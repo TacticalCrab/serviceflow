@@ -46,8 +46,9 @@ const formSchema = z.object({
     additionalCosts: z.array(z.object({
         description: z.string().min(1, "Opis jest wymagany"),
         price: z.number().min(0, "Cena musi być większa lub równa 0"),
+        includeInFinalPrice: z.boolean().optional(),
     })).optional(),
-    costEstimate: z.number().min(0, "Koszt musi być większy lub równy 0").optional(),
+    costEstimate: z.number().min(0, "Robocizna musi być większa lub równa 0").optional(),
     note: z.string().optional(),
 });
 

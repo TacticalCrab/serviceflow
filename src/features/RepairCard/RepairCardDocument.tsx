@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 
 import type { FirmSettings } from "@/features/FirmSettings/api"
 import { getDocumentFontFamily } from "@/features/FirmSettings/documentFonts"
+import { formatPhoneNumber } from "@/lib/phone"
 import {
   formatAmountForDocument,
   formatDocumentDate,
@@ -36,7 +37,7 @@ function RepairCardDocument({ data, settings }: RepairCardDocumentProps) {
     settings.street?.trim(),
     postalCity,
     settings.taxId?.trim() ? `NIP: ${settings.taxId.trim()}` : undefined,
-    settings.phone?.trim() ? `tel.: ${settings.phone.trim()}` : undefined,
+    settings.phone?.trim() ? `tel.: ${formatPhoneNumber(settings.phone)}` : undefined,
     settings.email?.trim() ? `e-mail: ${settings.email.trim()}` : undefined,
   ].filter(Boolean)
   const actions = normalizePerformedActions(data.performedActions)

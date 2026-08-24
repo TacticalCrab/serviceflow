@@ -60,7 +60,13 @@ import {
   serviceStatusBadgeClasses,
   serviceStatusLabels,
 } from "@/features/ServiceRequests/status"
+import {
+  finalPrice,
+  totalAdditionalExpenses,
+  totalIncludedInFinalPrice,
+} from "@/features/ServiceRequests/pricing"
 import { cn } from "@/lib/utils"
+import { formatPhoneNumber } from "@/lib/phone"
 
 const EDIT_FORM_ID = "service-request-edit-form"
 
@@ -139,7 +145,7 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
               label="Klient"
               value={[request.client.name, request.client.surname].filter(Boolean).join(" ")}
             />
-            <DetailItem label="Telefon" value={request.client.phone} />
+            <DetailItem label="Telefon" value={formatPhoneNumber(request.client.phone)} />
             <DetailItem label="E-mail" value={request.client.email} />
             <DetailItem label="Adres" value={request.client.address} />
             {request.client.note && (
@@ -199,19 +205,19 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
 
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle>Plan naprawy</CardTitle>
-          <CardDescription>Zakres prac, terminy i wycena.</CardDescription>
+          <CardTitle>Plan naprawy i rozliczenie</CardTitle>
+          <CardDescription>Zakres prac, terminy i rozliczenie.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <dl className="grid gap-5 sm:grid-cols-3">
+          <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             <DetailItem label="Czas naprawy" value={request.repairTime} />
-            <DetailItem label="Szacowany koszt" value={formatCost(request.costEstimate)} />
+            <DetailItem label="Robocizna" value={formatCost(request.costEstimate)} />
             <DetailItem
-              label="Dodatkowe koszty"
-              value={formatCost(
-                request.additionalCosts?.reduce((sum, cost) => sum + cost.price, 0)
-              )}
+              label="Wydatki"
+              value={formatCost(totalAdditionalExpenses(request.additionalCosts))}
             />
+            <DetailItem label="Wliczone wydatki" value={formatCost(totalIncludedInFinalPrice(request.additionalCosts))} />
+            <DetailItem label="Kwota końcowa" value={formatCost(finalPrice(request.costEstimate, request.additionalCosts))} />
           </dl>
 
           {request.note && (
@@ -243,7 +249,7 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
             </div>
 
             <div>
-              <h3 className="mb-3 text-sm font-medium">Dodatkowe koszty</h3>
+              <h3 className="mb-3 text-sm font-medium">Wydatki</h3>
               {request.additionalCosts?.length ? (
                 <div className="divide-y rounded-lg border">
                   {request.additionalCosts.map((cost, index) => (
@@ -252,15 +258,18 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
                       className="flex items-center justify-between gap-4 p-3 text-sm"
                     >
                       <span>{cost.description}</span>
-                      <span className="shrink-0 font-medium tabular-nums">
+                      <span className="shrink-0 text-right font-medium tabular-nums">
                         {formatCost(cost.price)}
+                        <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                          {cost.includeInFinalPrice ? "wliczony do kwoty końcowej" : "wydatek wewnętrzny"}
+                        </span>
                       </span>
                     </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Nie dodano dodatkowych kosztów.
+                  Nie dodano wydatków.
                 </p>
               )}
             </div>

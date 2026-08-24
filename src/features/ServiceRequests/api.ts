@@ -87,7 +87,10 @@ function serviceRequestToFormValues(request: ServiceRequest): FormSchema {
     },
     repairTime: request.repairTime ?? undefined,
     repairSteps: request.repairSteps ? [...request.repairSteps] : undefined,
-    additionalCosts: request.additionalCosts?.map((cost) => ({ ...cost })),
+    additionalCosts: request.additionalCosts?.map((cost) => ({
+      ...cost,
+      includeInFinalPrice: cost.includeInFinalPrice ?? false,
+    })),
     costEstimate: request.costEstimate ?? undefined,
     note: request.note ?? undefined,
   }
