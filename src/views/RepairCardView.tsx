@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { DefaultValueInput } from "@/components/DefaultValueInput"
 import { DeviceProducerInput } from "@/components/DeviceProducerInput"
+import { ServiceStepInput } from "@/components/ServiceStepInput"
 import {
   Card,
   CardContent,
@@ -448,6 +449,7 @@ function RepairCardView() {
             <CardContent>
               <form
                 className="grid gap-5"
+                autoComplete="off"
                 onKeyDownCapture={(event) => {
                   if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
                     event.preventDefault()
@@ -462,7 +464,7 @@ function RepairCardView() {
                       value={data.issuePlace}
                       onChange={(event) => updateField("issuePlace", event.target.value)}
                       placeholder="np. Wrocław"
-                      autoComplete="address-level2"
+                      autoComplete="off"
                     />
                   </FormField>
                   <FormField id="repair-card-date" label="Data wystawienia">
@@ -558,16 +560,14 @@ function RepairCardView() {
                                 <FieldLabel className="sr-only" htmlFor={inputId}>
                                   Krok naprawy {index + 1}
                                 </FieldLabel>
-                                <Input
+                                <ServiceStepInput
                                   ref={(element) => {
                                     stepInputRefs.current[index] = element
                                   }}
                                   id={inputId}
                                   value={step}
                                   aria-describedby="repair-card-actions-description"
-                                  onChange={(event) =>
-                                    updateRepairStep(index, event.target.value)
-                                  }
+                                  onValueChange={(value) => updateRepairStep(index, value)}
                                   onKeyDown={(event) => {
                                     if (event.key !== "Enter") return
 

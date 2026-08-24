@@ -6,6 +6,7 @@ import { CalendarIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react"
 
 import { DefaultValueInput } from "@/components/DefaultValueInput"
 import { DeviceProducerInput } from "@/components/DeviceProducerInput"
+import { ServiceStepInput } from "@/components/ServiceStepInput"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -207,6 +208,7 @@ function ServiceForm({
       id={formId}
       className={cn("w-full", className)}
       noValidate
+      autoComplete="off"
       onKeyDownCapture={(event) => {
         if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
           event.preventDefault()
@@ -318,7 +320,7 @@ function ServiceForm({
                         onBlur={field.handleBlur}
                         onValueChange={field.handleChange}
                         aria-invalid={isInvalid}
-                        autoComplete="given-name"
+                        autoComplete="off"
                         defaultKey={CLIENT_NAME_DEFAULT_KEY}
                         defaultValue="Klient"
                       />
@@ -342,7 +344,7 @@ function ServiceForm({
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(optionalText(event.target.value))}
                         aria-invalid={isInvalid}
-                        autoComplete="family-name"
+                        autoComplete="off"
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
@@ -365,7 +367,7 @@ function ServiceForm({
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(optionalText(event.target.value))}
                         aria-invalid={isInvalid}
-                        autoComplete="tel"
+                        autoComplete="off"
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
@@ -388,7 +390,7 @@ function ServiceForm({
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(optionalText(event.target.value))}
                         aria-invalid={isInvalid}
-                        autoComplete="email"
+                        autoComplete="off"
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
@@ -410,7 +412,7 @@ function ServiceForm({
                         onBlur={field.handleBlur}
                         onChange={(event) => field.handleChange(optionalText(event.target.value))}
                         aria-invalid={isInvalid}
-                        autoComplete="street-address"
+                        autoComplete="off"
                         rows={2}
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -1088,12 +1090,12 @@ function ServiceForm({
                                     <FieldLabel className="sr-only" htmlFor={stepField.name}>
                                       Krok {index + 1}
                                     </FieldLabel>
-                                    <Input
+                                    <ServiceStepInput
                                       id={stepField.name}
                                       name={stepField.name}
-                                      value={stepField.state.value}
+                                      value={stepField.state.value ?? ""}
                                       onBlur={stepField.handleBlur}
-                                      onChange={(event) => stepField.handleChange(event.target.value)}
+                                      onValueChange={stepField.handleChange}
                                       onKeyDown={(event) => {
                                         if (event.key !== "Enter") return
 

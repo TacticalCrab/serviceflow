@@ -41,6 +41,11 @@ import {
   saveDeviceProducers,
   useDeviceProducers,
 } from "@/features/DeviceProducers/producers"
+import {
+  normalizeServiceSteps,
+  saveServiceSteps,
+  useServiceSteps,
+} from "@/features/ServiceSteps/serviceSteps"
 import type { ServiceStatus } from "@/features/ServiceRequests/api"
 import {
   serviceStatusDotClasses,
@@ -84,17 +89,24 @@ function SortableStatus({ status, index }: { status: ServiceStatus; index: numbe
 function ConfigurationView() {
   const configuredOrder = useStatusOrder()
   const configuredProducers = useDeviceProducers()
+  const configuredSteps = useServiceSteps()
   const [order, setOrder] = useState(configuredOrder)
   const [producers, setProducers] = useState(configuredProducers)
+  const [steps, setSteps] = useState(configuredSteps)
   const [newProducer, setNewProducer] = useState("")
+  const [newStep, setNewStep] = useState("")
   const [saving, setSaving] = useState(false)
   const [savingProducers, setSavingProducers] = useState(false)
+  const [savingSteps, setSavingSteps] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const statusDirty = order.some((status, index) => status !== configuredOrder[index])
   const producersDirty =
     JSON.stringify(normalizeDeviceProducers(producers)) !==
     JSON.stringify(normalizeDeviceProducers(configuredProducers))
+  const stepsDirty =
+    JSON.stringify(normalizeServiceSteps(steps)) !==
+    JSON.stringify(normalizeServiceSteps(configuredSteps))
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -107,6 +119,10 @@ function ConfigurationView() {
   useEffect(() => {
     setProducers(configuredProducers)
   }, [configuredProducers])
+
+  useEffect(() => {
+    setSteps(configuredSteps)
+  }, [configuredSteps])
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
@@ -166,6 +182,35 @@ function ConfigurationView() {
       )
     } finally {
       setSavingProducers(false)
+    }
+  }
+
+  function addStep() {
+    const step = newStep.trim()
+    if (!step) return
+
+    setSaved(false)
+    setSteps((current) => [...current, step])
+    setNewStep("")
+  }
+
+  async function handleSaveSteps() {
+    setSavingSteps(true)
+    setError(null)
+    setSaved(false)
+
+    try {
+      const savedSteps = await saveServiceSteps(steps)
+      setSteps(savedSteps)
+      setSaved(true)
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Nie udało się zapisać kroków serwisowych."
+      )
+    } finally {
+      setSavingSteps(false)
     }
   }
 
@@ -299,6 +344,81 @@ function ConfigurationView() {
             <Button type="button" size="sm" onClick={() => void handleSaveProducers()} disabled={savingProducers || !producersDirty}>
               {savingProducers && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
               {savingProducers ? "Zapisywanie…" : "Zapisz producentów"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader className="p-4 pb-0">
+          <CardTitle className="text-base">Kroki serwisowe</CardTitle>
+          <CardDescription>
+            Lista jest dostępna przy krokach naprawy na zleceniu i karcie naprawy.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex gap-2">
+            <Input
+              value={newStep}
+              onChange={(event) => setNewStep(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return
+                event.preventDefault()
+                addStep()
+              }}
+              placeholder="Np. Wymiana uszczelki"
+              autoComplete="off"
+              aria-label="Nowy krok serwisowy"
+            />
+            <Button type="button" variant="outline" size="icon" onClick={addStep} aria-label="Dodaj krok serwisowy">
+              <PlusIcon />
+            </Button>
+          </div>
+          <div className="divide-y overflow-hidden rounded-lg border">
+            {steps.length ? (
+              steps.map((step, index) => (
+                <div key={`${step}-${index}`} className="flex items-center gap-2 p-2">
+                  <Input
+                    value={step}
+                    autoComplete="off"
+                    onChange={(event) => {
+                      setSaved(false)
+                      setSteps((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index ? event.target.value : item
+                        )
+                      )
+                    }}
+                    aria-label={`Krok serwisowy ${index + 1}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      setSaved(false)
+                      setSteps((current) => current.filter((_, itemIndex) => itemIndex !== index))
+                    }}
+                    aria-label={`Usuń krok serwisowy ${step}`}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <p className="p-3 text-sm text-muted-foreground">Nie dodano kroków serwisowych.</p>
+            )}
+          </div>
+          {stepsDirty && (
+            <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <CircleAlertIcon className="size-4 shrink-0" />
+              Zmieniono kroki serwisowe. Zapisz tę sekcję.
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button type="button" size="sm" onClick={() => void handleSaveSteps()} disabled={savingSteps || !stepsDirty}>
+              {savingSteps && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
+              {savingSteps ? "Zapisywanie…" : "Zapisz kroki"}
             </Button>
           </div>
         </CardContent>

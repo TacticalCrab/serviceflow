@@ -18,3 +18,4 @@ Second version after feedback
 - Update: list component add new row on Enter click & disable Enter submit in request edition
 - Feature: notes for request & client notes
 - Feature: producer names switch and configuration
+- Feature: service steps switch and configuration

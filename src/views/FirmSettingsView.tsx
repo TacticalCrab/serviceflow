@@ -274,7 +274,7 @@ function FirmSettingsView() {
                           onBlur={field.handleBlur}
                           onChange={(event) => field.handleChange(event.target.value)}
                           aria-invalid={isInvalid}
-                          autoComplete="organization"
+                          autoComplete="off"
                           placeholder="Np. Cafe Serwis Jan Kowalski"
                         />
                         {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -299,7 +299,7 @@ function FirmSettingsView() {
                             field.handleChange(optionalText(event.target.value))
                           }
                           aria-invalid={isInvalid}
-                          autoComplete="name"
+                          autoComplete="off"
                         />
                         {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
@@ -353,7 +353,7 @@ function FirmSettingsView() {
                             field.handleChange(optionalText(event.target.value))
                           }
                           aria-invalid={isInvalid}
-                          autoComplete="street-address"
+                          autoComplete="off"
                           placeholder="Np. ul. Kawowa 12"
                         />
                         {isInvalid && <FieldError errors={field.state.meta.errors} />}
@@ -378,7 +378,7 @@ function FirmSettingsView() {
                             field.handleChange(optionalText(event.target.value))
                           }
                           aria-invalid={isInvalid}
-                          autoComplete="postal-code"
+                          autoComplete="off"
                           inputMode="numeric"
                           placeholder="00-000"
                         />
@@ -404,7 +404,7 @@ function FirmSettingsView() {
                             field.handleChange(optionalText(event.target.value))
                           }
                           aria-invalid={isInvalid}
-                          autoComplete="address-level2"
+                          autoComplete="off"
                         />
                         {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
@@ -434,7 +434,7 @@ function FirmSettingsView() {
                             field.handleChange(optionalText(event.target.value))
                           }
                           aria-invalid={isInvalid}
-                          autoComplete="tel"
+                          autoComplete="off"
                         />
                         {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
@@ -459,7 +459,7 @@ function FirmSettingsView() {
                             field.handleChange(optionalText(event.target.value))
                           }
                           aria-invalid={isInvalid}
-                          autoComplete="email"
+                          autoComplete="off"
                         />
                         {isInvalid && <FieldError errors={field.state.meta.errors} />}
                       </Field>
