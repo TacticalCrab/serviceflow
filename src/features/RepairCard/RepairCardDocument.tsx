@@ -118,10 +118,10 @@ function RepairCardDocument({ data, settings }: RepairCardDocumentProps) {
             className="repair-card-amount mt-[5cqw] grid gap-y-[1.8cqw]"
             data-repair-card-section="amount"
           >
-            <DocumentRow label="Kwota">
+            <DocumentRow label="Kwota:">
               {formatAmountForDocument(data.amount)}
             </DocumentRow>
-            <DocumentRow label="Słownie">{data.amountInWords.trim()}</DocumentRow>
+            <DocumentRow label="Słownie:">{data.amountInWords.trim()}</DocumentRow>
           </dl>
         </main>
 

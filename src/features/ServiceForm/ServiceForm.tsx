@@ -210,6 +210,17 @@ function ServiceForm({
       await onSubmit?.(value)
       formApi.reset(value)
     },
+    onSubmitInvalid: () => {
+      window.requestAnimationFrame(() => {
+        const invalidField = document.querySelector<HTMLElement>('[data-invalid="true"]')
+        if (!invalidField) return
+
+        invalidField.scrollIntoView({ behavior: "smooth", block: "center" })
+        invalidField
+          .querySelector<HTMLElement>('input, textarea, button, [role="combobox"]')
+          ?.focus({ preventScroll: true })
+      })
+    },
   })
 
   useEffect(() => {

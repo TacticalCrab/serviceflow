@@ -24,3 +24,4 @@ Second version after feedback
 - Feature: new price calculations
 - Update: phone number format
 - Update: CTRL + S to save service form
+- Feature: scroll into view on form validation error & minor changes
