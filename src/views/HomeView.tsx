@@ -145,12 +145,20 @@ type ScheduledTransportCardProps = {
   request: ServiceRequest
   date: Date
   method: "clientDropOff" | "servicePickup" | "clientPickup" | "serviceDelivery"
+  timeMode?: "allDay" | "specific" | "range"
+  time?: string
+  timeFrom?: string
+  timeTo?: string
 }
 
 function ScheduledTransportCard({
   request,
   date,
   method,
+  timeMode,
+  time,
+  timeFrom,
+  timeTo,
 }: ScheduledTransportCardProps) {
   const clientName = [request.client.name, request.client.surname]
     .filter(Boolean)
@@ -186,6 +194,14 @@ function ScheduledTransportCard({
     },
   }[method]
   const Icon = transportDetails.icon
+  const timeLabel =
+    timeMode === "allDay"
+      ? "Cały dzień"
+      : timeMode === "specific" && time
+      ? `Godzina: ${time}`
+      : timeMode === "range" && (timeFrom || timeTo)
+        ? `Godziny: ${timeFrom ?? "—"}–${timeTo ?? "—"}`
+        : null
 
   return (
     <Link
@@ -211,6 +227,7 @@ function ScheduledTransportCard({
             <p className="text-base font-semibold capitalize">
               {format(date, "EEEE, d MMMM yyyy", { locale: pl })}
             </p>
+            {timeLabel && <p className="mt-1 text-sm font-medium">{timeLabel}</p>}
             <p className="mt-1 text-sm text-muted-foreground">
               {deviceName} dla {clientName}
             </p>
@@ -292,7 +309,7 @@ function HomeView() {
 
         const date = new Date(checkIn.date)
         return isValid(date) && !isBefore(date, today)
-          ? [{ request, date, method: checkIn.method }]
+          ? [{ request, ...checkIn, date, method: checkIn.method }]
           : []
       })
       .sort((first, second) => first.date.getTime() - second.date.getTime())
@@ -305,7 +322,7 @@ function HomeView() {
 
         const date = new Date(checkOut.date)
         return isValid(date) && !isBefore(date, today)
-          ? [{ request, date, method: checkOut.method }]
+          ? [{ request, ...checkOut, date, method: checkOut.method }]
           : []
       })
       .sort((first, second) => first.date.getTime() - second.date.getTime())

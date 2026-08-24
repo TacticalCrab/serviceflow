@@ -57,12 +57,20 @@ function serviceRequestToFormValues(request: ServiceRequest): FormSchema {
               ? {
                   method: preferences.checkIn.method ?? undefined,
                   date: parseDate(preferences.checkIn.date),
+                  timeMode: preferences.checkIn.timeMode ?? undefined,
+                  time: preferences.checkIn.time ?? undefined,
+                  timeFrom: preferences.checkIn.timeFrom ?? undefined,
+                  timeTo: preferences.checkIn.timeTo ?? undefined,
                 }
               : undefined,
             checkOut: preferences.checkOut
               ? {
                   method: preferences.checkOut.method ?? undefined,
                   date: parseDate(preferences.checkOut.date),
+                  timeMode: preferences.checkOut.timeMode ?? undefined,
+                  time: preferences.checkOut.time ?? undefined,
+                  timeFrom: preferences.checkOut.timeFrom ?? undefined,
+                  timeTo: preferences.checkOut.timeTo ?? undefined,
                 }
               : undefined,
           }

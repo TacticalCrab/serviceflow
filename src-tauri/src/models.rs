@@ -7,6 +7,14 @@ pub struct TransportDetails {
     pub method: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub date: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_mode: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_from: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_to: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

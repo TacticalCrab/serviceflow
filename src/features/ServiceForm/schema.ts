@@ -3,11 +3,19 @@ import * as z from "zod";
 const checkInSchema = z.object({
     method: z.enum(["clientDropOff", "servicePickup"]).optional(),
     date: z.date().optional(),
+    timeMode: z.enum(["allDay", "specific", "range"]).optional(),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Podaj prawidłową godzinę").optional(),
+    timeFrom: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Podaj prawidłową godzinę").optional(),
+    timeTo: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Podaj prawidłową godzinę").optional(),
 });
 
 const checkOutSchema = z.object({
     method: z.enum(["clientPickup", "serviceDelivery"]).optional(),
     date: z.date().optional(),
+    timeMode: z.enum(["allDay", "specific", "range"]).optional(),
+    time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Podaj prawidłową godzinę").optional(),
+    timeFrom: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Podaj prawidłową godzinę").optional(),
+    timeTo: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Podaj prawidłową godzinę").optional(),
 });
 
 const formSchema = z.object({

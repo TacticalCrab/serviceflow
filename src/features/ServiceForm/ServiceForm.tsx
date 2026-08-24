@@ -55,10 +55,18 @@ function createDefaultValues(values?: FormSchema): FormSchema {
         checkIn: {
           method: values?.client.preferences?.checkIn?.method,
           date: values?.client.preferences?.checkIn?.date,
+          timeMode: values?.client.preferences?.checkIn?.timeMode,
+          time: values?.client.preferences?.checkIn?.time,
+          timeFrom: values?.client.preferences?.checkIn?.timeFrom,
+          timeTo: values?.client.preferences?.checkIn?.timeTo,
         },
         checkOut: {
           method: values?.client.preferences?.checkOut?.method,
           date: values?.client.preferences?.checkOut?.date,
+          timeMode: values?.client.preferences?.checkOut?.timeMode,
+          time: values?.client.preferences?.checkOut?.time,
+          timeFrom: values?.client.preferences?.checkOut?.timeFrom,
+          timeTo: values?.client.preferences?.checkOut?.timeTo,
         },
         repairCard: values?.client.preferences?.repairCard ?? false,
         invoice: values?.client.preferences?.invoice ?? false,
@@ -330,33 +338,46 @@ function ServiceForm({
                       <>
                         <Field>
                           <RadioGroup
-                            name={methodField.name}
-                            value={methodField.state.value ?? ""}
-                            onValueChange={(value) =>
-                              methodField.handleChange(
-                                value as "clientDropOff" | "servicePickup"
-                              )
-                            }
-                            onBlur={methodField.handleBlur}
-                          >
-                            <Field orientation="horizontal">
-                              <RadioGroupItem
-                                id="check-in-client"
-                                value="clientDropOff"
-                              />
-                              <FieldLabel htmlFor="check-in-client">
-                                Klient przywozi sprzęt
-                              </FieldLabel>
-                            </Field>
-                            <Field orientation="horizontal">
-                              <RadioGroupItem
-                                id="check-in-service"
-                                value="servicePickup"
-                              />
-                              <FieldLabel htmlFor="check-in-service">
-                                Serwis odbiera sprzęt
-                              </FieldLabel>
-                            </Field>
+                              name={methodField.name}
+                              value={methodField.state.value ?? "unsettled"}
+                              onValueChange={(value) => {
+                                if (value === "unsettled") {
+                                  methodField.handleChange(undefined)
+                                  form.setFieldValue("client.preferences.checkIn.date", undefined)
+                                  form.setFieldValue("client.preferences.checkIn.timeMode", undefined)
+                                  form.setFieldValue("client.preferences.checkIn.time", undefined)
+                                  form.setFieldValue("client.preferences.checkIn.timeFrom", undefined)
+                                  form.setFieldValue("client.preferences.checkIn.timeTo", undefined)
+                                  return
+                                }
+
+                                methodField.handleChange(value as "clientDropOff" | "servicePickup")
+                                form.setFieldValue("client.preferences.checkIn.timeMode", "allDay")
+                              }}
+                              onBlur={methodField.handleBlur}
+                            >
+                              <Field orientation="horizontal">
+                                <RadioGroupItem id="check-in-unsettled" value="unsettled" />
+                                <FieldLabel htmlFor="check-in-unsettled">Nie ustalono</FieldLabel>
+                              </Field>
+                              <Field orientation="horizontal">
+                                <RadioGroupItem
+                                  id="check-in-client"
+                                  value="clientDropOff"
+                                />
+                                <FieldLabel htmlFor="check-in-client">
+                                  Klient przywozi sprzęt
+                                </FieldLabel>
+                              </Field>
+                              <Field orientation="horizontal">
+                                <RadioGroupItem
+                                  id="check-in-service"
+                                  value="servicePickup"
+                                />
+                                <FieldLabel htmlFor="check-in-service">
+                                  Serwis odbiera sprzęt
+                                </FieldLabel>
+                              </Field>
                           </RadioGroup>
                         </Field>
 
@@ -388,6 +409,120 @@ function ServiceForm({
                             }}
                           </form.Field>
                         )}
+
+                        {methodField.state.value && (
+                          <form.Field name="client.preferences.checkIn.timeMode">
+                            {(timeModeField) => (
+                              <Field>
+                                <FieldLabel>Godzina przyjęcia</FieldLabel>
+                                <RadioGroup
+                                  name={timeModeField.name}
+                                  value={timeModeField.state.value ?? "allDay"}
+                                  onValueChange={(value) => {
+                                    const timeMode = value as "allDay" | "specific" | "range"
+                                    timeModeField.handleChange(timeMode)
+                                    if (timeMode === "specific") {
+                                      form.setFieldValue(
+                                        "client.preferences.checkIn.timeFrom",
+                                        undefined
+                                      )
+                                      form.setFieldValue(
+                                        "client.preferences.checkIn.timeTo",
+                                        undefined
+                                      )
+                                    } else if (timeMode === "range") {
+                                      form.setFieldValue(
+                                        "client.preferences.checkIn.time",
+                                        undefined
+                                      )
+                                    } else {
+                                      form.setFieldValue("client.preferences.checkIn.time", undefined)
+                                      form.setFieldValue("client.preferences.checkIn.timeFrom", undefined)
+                                      form.setFieldValue("client.preferences.checkIn.timeTo", undefined)
+                                    }
+                                  }}
+                                  onBlur={timeModeField.handleBlur}
+                                >
+                                  <Field orientation="horizontal">
+                                    <RadioGroupItem id="check-in-time-all-day" value="allDay" />
+                                    <FieldLabel htmlFor="check-in-time-all-day">Cały dzień</FieldLabel>
+                                  </Field>
+                                  <Field orientation="horizontal">
+                                    <RadioGroupItem id="check-in-time-specific" value="specific" />
+                                    <FieldLabel htmlFor="check-in-time-specific">
+                                      Konkretna godzina
+                                    </FieldLabel>
+                                  </Field>
+                                  <Field orientation="horizontal">
+                                    <RadioGroupItem id="check-in-time-range" value="range" />
+                                    <FieldLabel htmlFor="check-in-time-range">
+                                      Przedział godzin
+                                    </FieldLabel>
+                                  </Field>
+                                </RadioGroup>
+
+                                {timeModeField.state.value === "specific" && (
+                                  <form.Field name="client.preferences.checkIn.time">
+                                    {(timeField) => (
+                                      <Field>
+                                        <FieldLabel htmlFor={timeField.name}>Godzina</FieldLabel>
+                                        <Input
+                                          id={timeField.name}
+                                          name={timeField.name}
+                                          type="time"
+                                          value={timeField.state.value ?? ""}
+                                          onBlur={timeField.handleBlur}
+                                          onChange={(event) =>
+                                            timeField.handleChange(optionalText(event.target.value))
+                                          }
+                                        />
+                                      </Field>
+                                    )}
+                                  </form.Field>
+                                )}
+
+                                {timeModeField.state.value === "range" && (
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <form.Field name="client.preferences.checkIn.timeFrom">
+                                      {(timeField) => (
+                                        <Field>
+                                          <FieldLabel htmlFor={timeField.name}>Od</FieldLabel>
+                                          <Input
+                                            id={timeField.name}
+                                            name={timeField.name}
+                                            type="time"
+                                            value={timeField.state.value ?? ""}
+                                            onBlur={timeField.handleBlur}
+                                            onChange={(event) =>
+                                              timeField.handleChange(optionalText(event.target.value))
+                                            }
+                                          />
+                                        </Field>
+                                      )}
+                                    </form.Field>
+                                    <form.Field name="client.preferences.checkIn.timeTo">
+                                      {(timeField) => (
+                                        <Field>
+                                          <FieldLabel htmlFor={timeField.name}>Do</FieldLabel>
+                                          <Input
+                                            id={timeField.name}
+                                            name={timeField.name}
+                                            type="time"
+                                            value={timeField.state.value ?? ""}
+                                            onBlur={timeField.handleBlur}
+                                            onChange={(event) =>
+                                              timeField.handleChange(optionalText(event.target.value))
+                                            }
+                                          />
+                                        </Field>
+                                      )}
+                                    </form.Field>
+                                  </div>
+                                )}
+                              </Field>
+                            )}
+                          </form.Field>
+                        )}
                       </>
                     )}
                   </form.Field>
@@ -400,33 +535,46 @@ function ServiceForm({
                       <>
                         <Field>
                           <RadioGroup
-                            name={methodField.name}
-                            value={methodField.state.value ?? ""}
-                            onValueChange={(value) =>
-                              methodField.handleChange(
-                                value as "clientPickup" | "serviceDelivery"
-                              )
-                            }
-                            onBlur={methodField.handleBlur}
-                          >
-                            <Field orientation="horizontal">
-                              <RadioGroupItem
-                                id="check-out-client"
-                                value="clientPickup"
-                              />
-                              <FieldLabel htmlFor="check-out-client">
-                                Klient odbiera sprzęt
-                              </FieldLabel>
-                            </Field>
-                            <Field orientation="horizontal">
-                              <RadioGroupItem
-                                id="check-out-service"
-                                value="serviceDelivery"
-                              />
-                              <FieldLabel htmlFor="check-out-service">
-                                Serwis dostarcza sprzęt
-                              </FieldLabel>
-                            </Field>
+                              name={methodField.name}
+                              value={methodField.state.value ?? "unsettled"}
+                              onValueChange={(value) => {
+                                if (value === "unsettled") {
+                                  methodField.handleChange(undefined)
+                                  form.setFieldValue("client.preferences.checkOut.date", undefined)
+                                  form.setFieldValue("client.preferences.checkOut.timeMode", undefined)
+                                  form.setFieldValue("client.preferences.checkOut.time", undefined)
+                                  form.setFieldValue("client.preferences.checkOut.timeFrom", undefined)
+                                  form.setFieldValue("client.preferences.checkOut.timeTo", undefined)
+                                  return
+                                }
+
+                                methodField.handleChange(value as "clientPickup" | "serviceDelivery")
+                                form.setFieldValue("client.preferences.checkOut.timeMode", "allDay")
+                              }}
+                              onBlur={methodField.handleBlur}
+                            >
+                              <Field orientation="horizontal">
+                                <RadioGroupItem id="check-out-unsettled" value="unsettled" />
+                                <FieldLabel htmlFor="check-out-unsettled">Nie ustalono</FieldLabel>
+                              </Field>
+                              <Field orientation="horizontal">
+                                <RadioGroupItem
+                                  id="check-out-client"
+                                  value="clientPickup"
+                                />
+                                <FieldLabel htmlFor="check-out-client">
+                                  Klient odbiera sprzęt
+                                </FieldLabel>
+                              </Field>
+                              <Field orientation="horizontal">
+                                <RadioGroupItem
+                                  id="check-out-service"
+                                  value="serviceDelivery"
+                                />
+                                <FieldLabel htmlFor="check-out-service">
+                                  Serwis dostarcza sprzęt
+                                </FieldLabel>
+                              </Field>
                           </RadioGroup>
                         </Field>
 
@@ -456,6 +604,120 @@ function ServiceForm({
                                 </Field>
                               )
                             }}
+                          </form.Field>
+                        )}
+
+                        {methodField.state.value && (
+                          <form.Field name="client.preferences.checkOut.timeMode">
+                            {(timeModeField) => (
+                              <Field>
+                                <FieldLabel>Godzina zwrotu</FieldLabel>
+                                <RadioGroup
+                                  name={timeModeField.name}
+                                  value={timeModeField.state.value ?? "allDay"}
+                                  onValueChange={(value) => {
+                                    const timeMode = value as "allDay" | "specific" | "range"
+                                    timeModeField.handleChange(timeMode)
+                                    if (timeMode === "specific") {
+                                      form.setFieldValue(
+                                        "client.preferences.checkOut.timeFrom",
+                                        undefined
+                                      )
+                                      form.setFieldValue(
+                                        "client.preferences.checkOut.timeTo",
+                                        undefined
+                                      )
+                                    } else if (timeMode === "range") {
+                                      form.setFieldValue(
+                                        "client.preferences.checkOut.time",
+                                        undefined
+                                      )
+                                    } else {
+                                      form.setFieldValue("client.preferences.checkOut.time", undefined)
+                                      form.setFieldValue("client.preferences.checkOut.timeFrom", undefined)
+                                      form.setFieldValue("client.preferences.checkOut.timeTo", undefined)
+                                    }
+                                  }}
+                                  onBlur={timeModeField.handleBlur}
+                                >
+                                  <Field orientation="horizontal">
+                                    <RadioGroupItem id="check-out-time-all-day" value="allDay" />
+                                    <FieldLabel htmlFor="check-out-time-all-day">Cały dzień</FieldLabel>
+                                  </Field>
+                                  <Field orientation="horizontal">
+                                    <RadioGroupItem id="check-out-time-specific" value="specific" />
+                                    <FieldLabel htmlFor="check-out-time-specific">
+                                      Konkretna godzina
+                                    </FieldLabel>
+                                  </Field>
+                                  <Field orientation="horizontal">
+                                    <RadioGroupItem id="check-out-time-range" value="range" />
+                                    <FieldLabel htmlFor="check-out-time-range">
+                                      Przedział godzin
+                                    </FieldLabel>
+                                  </Field>
+                                </RadioGroup>
+
+                                {timeModeField.state.value === "specific" && (
+                                  <form.Field name="client.preferences.checkOut.time">
+                                    {(timeField) => (
+                                      <Field>
+                                        <FieldLabel htmlFor={timeField.name}>Godzina</FieldLabel>
+                                        <Input
+                                          id={timeField.name}
+                                          name={timeField.name}
+                                          type="time"
+                                          value={timeField.state.value ?? ""}
+                                          onBlur={timeField.handleBlur}
+                                          onChange={(event) =>
+                                            timeField.handleChange(optionalText(event.target.value))
+                                          }
+                                        />
+                                      </Field>
+                                    )}
+                                  </form.Field>
+                                )}
+
+                                {timeModeField.state.value === "range" && (
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <form.Field name="client.preferences.checkOut.timeFrom">
+                                      {(timeField) => (
+                                        <Field>
+                                          <FieldLabel htmlFor={timeField.name}>Od</FieldLabel>
+                                          <Input
+                                            id={timeField.name}
+                                            name={timeField.name}
+                                            type="time"
+                                            value={timeField.state.value ?? ""}
+                                            onBlur={timeField.handleBlur}
+                                            onChange={(event) =>
+                                              timeField.handleChange(optionalText(event.target.value))
+                                            }
+                                          />
+                                        </Field>
+                                      )}
+                                    </form.Field>
+                                    <form.Field name="client.preferences.checkOut.timeTo">
+                                      {(timeField) => (
+                                        <Field>
+                                          <FieldLabel htmlFor={timeField.name}>Do</FieldLabel>
+                                          <Input
+                                            id={timeField.name}
+                                            name={timeField.name}
+                                            type="time"
+                                            value={timeField.state.value ?? ""}
+                                            onBlur={timeField.handleBlur}
+                                            onChange={(event) =>
+                                              timeField.handleChange(optionalText(event.target.value))
+                                            }
+                                          />
+                                        </Field>
+                                      )}
+                                    </form.Field>
+                                  </div>
+                                )}
+                              </Field>
+                            )}
                           </form.Field>
                         )}
                       </>

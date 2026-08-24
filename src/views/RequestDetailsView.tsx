@@ -81,6 +81,25 @@ function formatDate(value: string | undefined, includeTime = false) {
   })
 }
 
+function formatTransportTime(transport?: {
+  timeMode?: "allDay" | "specific" | "range"
+  time?: string
+  timeFrom?: string
+  timeTo?: string
+}) {
+  if (transport?.timeMode === "allDay") return "Cały dzień"
+
+  if (transport?.timeMode === "specific" && transport.time) {
+    return `Godzina: ${transport.time}`
+  }
+
+  if (transport?.timeMode === "range" && (transport.timeFrom || transport.timeTo)) {
+    return `Godziny: ${transport.timeFrom ?? "—"}–${transport.timeTo ?? "—"}`
+  }
+
+  return null
+}
+
 function formatCost(value: number | undefined) {
   if (value === undefined) return "—"
 
@@ -136,6 +155,9 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
                 {checkIn?.method ? transportLabels[checkIn.method] : "Nie ustalono"}
               </p>
               <p className="mt-1 text-sm">{formatDate(checkIn?.date)}</p>
+              {formatTransportTime(checkIn) && (
+                <p className="mt-1 text-sm">{formatTransportTime(checkIn)}</p>
+              )}
             </div>
             <div className="rounded-lg border bg-muted/30 p-3">
               <p className="mb-2 text-sm font-medium">Zwrot sprzętu</p>
@@ -143,6 +165,9 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
                 {checkOut?.method ? transportLabels[checkOut.method] : "Nie ustalono"}
               </p>
               <p className="mt-1 text-sm">{formatDate(checkOut?.date)}</p>
+              {formatTransportTime(checkOut) && (
+                <p className="mt-1 text-sm">{formatTransportTime(checkOut)}</p>
+              )}
             </div>
           </div>
         </CardContent>
