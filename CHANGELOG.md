@@ -20,3 +20,4 @@ Second version after feedback
 - Feature: producer names switch and configuration
 - Feature: service steps switch and configuration
 - Feature: font size configuration
+- Feature: settings dropdown & configuration layout

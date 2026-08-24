@@ -1,7 +1,13 @@
 import { Link, NavLink } from "react-router"
-import { PlusIcon, SettingsIcon } from "lucide-react"
+import { ChevronDownIcon, PlusIcon, SettingsIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 const navigation = [
@@ -48,17 +54,24 @@ function Navbar() {
           ))}
         </nav>
 
-        <Button
-          className="ml-auto"
-          variant="ghost"
-          size="icon"
-          nativeButton={false}
-          render={<Link to="/ustawienia/firma" />}
-          aria-label="Ustawienia firmy"
-          title="Ustawienia firmy"
-        >
-          <SettingsIcon />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className="ml-auto inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+            aria-label="Ustawienia"
+          >
+            <SettingsIcon className="size-4" />
+            <span className="hidden sm:inline">Ustawienia</span>
+            <ChevronDownIcon className="size-3.5" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem render={<Link to="/ustawienia/firma" />}>
+              Ustawienia firmy
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link to="/ustawienia/konfiguracja" />}>
+              Konfiguracja
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button
           nativeButton={false}

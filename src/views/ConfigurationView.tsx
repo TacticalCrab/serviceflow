@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router"
 import {
   DndContext,
   KeyboardSensor,
@@ -257,7 +256,7 @@ function ConfigurationView() {
 
   return (
     <section className="space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <header>
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">Ustawienia</p>
           <h1 className="text-3xl font-semibold tracking-tight">Konfiguracja</h1>
@@ -265,9 +264,6 @@ function ConfigurationView() {
             Dostosuj sposób działania widoków serwisowych.
           </p>
         </div>
-        <Button variant="outline" nativeButton={false} render={<Link to="/ustawienia/firma" />}>
-          Ustawienia firmy
-        </Button>
       </header>
 
       {saved && (
@@ -283,50 +279,51 @@ function ConfigurationView() {
         </div>
       )}
 
-      <Card className="max-w-xl">
-        <CardHeader className="p-4 pb-0">
-          <CardTitle className="text-base">Rozmiar tekstu aplikacji</CardTitle>
-          <CardDescription>
-            Zmień rozmiar tekstu we wszystkich widokach aplikacji. Nie wpływa to na wygląd ani czcionkę karty naprawy.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 p-4">
-          <Select
-            value={String(fontSize)}
-            onValueChange={(value) => {
-              setSaved(false)
-              setFontSize(Number(value))
-            }}
-          >
-            <SelectTrigger className="h-10 w-full sm:max-w-md" aria-label="Rozmiar tekstu aplikacji">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="start" alignItemWithTrigger={false}>
-              <SelectGroup>
-                {appFontSizeOptions.map((option) => (
-                  <SelectItem key={option} value={String(option)}>
-                    {option === 16 ? `${option} px (domyślny)` : `${option} px`}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-          {fontSizeDirty && (
-            <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
-              <CircleAlertIcon className="size-4 shrink-0" />
-              Zmieniono rozmiar tekstu. Zapisz tę sekcję.
+      <div className="grid items-start gap-6 xl:grid-cols-2">
+        <Card className="order-4">
+          <CardHeader className="p-4 pb-0">
+            <CardTitle className="text-base">Rozmiar tekstu aplikacji</CardTitle>
+            <CardDescription>
+              Zmień rozmiar tekstu we wszystkich widokach aplikacji. Nie wpływa to na wygląd ani czcionkę karty naprawy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 p-4">
+            <Select
+              value={String(fontSize)}
+              onValueChange={(value) => {
+                setSaved(false)
+                setFontSize(Number(value))
+              }}
+            >
+              <SelectTrigger className="h-10 w-full sm:max-w-md" aria-label="Rozmiar tekstu aplikacji">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="start" alignItemWithTrigger={false}>
+                <SelectGroup>
+                  {appFontSizeOptions.map((option) => (
+                    <SelectItem key={option} value={String(option)}>
+                      {option === 16 ? `${option} px (domyślny)` : `${option} px`}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {fontSizeDirty && (
+              <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+                <CircleAlertIcon className="size-4 shrink-0" />
+                Zmieniono rozmiar tekstu. Zapisz tę sekcję.
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button type="button" size="sm" onClick={() => void handleSaveFontSize()} disabled={savingFontSize || !fontSizeDirty}>
+                {savingFontSize && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
+                {savingFontSize ? "Zapisywanie…" : "Zapisz rozmiar"}
+              </Button>
             </div>
-          )}
-          <div className="flex justify-end">
-            <Button type="button" size="sm" onClick={() => void handleSaveFontSize()} disabled={savingFontSize || !fontSizeDirty}>
-              {savingFontSize && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
-              {savingFontSize ? "Zapisywanie…" : "Zapisz rozmiar"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <Card className="max-w-xl">
+        <Card className="order-3">
         <CardHeader className="p-4 pb-0">
           <CardTitle className="text-base">Kolejność statusów</CardTitle>
           <CardDescription>
@@ -358,7 +355,7 @@ function ConfigurationView() {
         </CardContent>
       </Card>
 
-      <Card className="max-w-xl">
+      <Card className="order-2">
         <CardHeader className="p-4 pb-0">
           <CardTitle className="text-base">Producenci urządzeń</CardTitle>
           <CardDescription>
@@ -433,7 +430,7 @@ function ConfigurationView() {
         </CardContent>
       </Card>
 
-      <Card className="max-w-xl">
+      <Card className="order-1">
         <CardHeader className="p-4 pb-0">
           <CardTitle className="text-base">Kroki serwisowe</CardTitle>
           <CardDescription>
@@ -508,12 +505,13 @@ function ConfigurationView() {
         </CardContent>
       </Card>
 
-      <Card className="border-dashed bg-muted/20">
+      <Card className="order-5 border-dashed bg-muted/20 xl:col-span-2">
         <CardContent className="flex items-start gap-3 pt-6 text-sm text-muted-foreground">
           <Settings2Icon className="mt-0.5 size-4 shrink-0" />
           Kolejne ustawienia operacyjne będą dostępne w tym widoku.
         </CardContent>
       </Card>
+      </div>
     </section>
   )
 }
