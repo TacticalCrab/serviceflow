@@ -26,6 +26,7 @@ const formSchema = z.object({
         phone: z.string().optional(),
         email: z.email("Nieprawidłowy adres email").optional(),
         address: z.string().optional(),
+        note: z.string().optional(),
         preferences: z.object({
             checkIn: checkInSchema.optional(),
             checkOut: checkOutSchema.optional(),
@@ -47,6 +48,7 @@ const formSchema = z.object({
         price: z.number().min(0, "Cena musi być większa lub równa 0"),
     })).optional(),
     costEstimate: z.number().min(0, "Koszt musi być większy lub równy 0").optional(),
+    note: z.string().optional(),
 });
 
 export type FormSchema = z.infer<typeof formSchema>;

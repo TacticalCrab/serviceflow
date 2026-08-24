@@ -16,3 +16,4 @@ Second version after feedback
 - Update: change the order of blocks in service request
 - Update: Naprawy view, add ordering, fresh view, configuration for statuses, saving state between views, more columns to display, more actions, and context window with actions.
 - Update: list component add new row on Enter click & disable Enter submit in request edition
+- Feature: notes for request & client notes

@@ -50,6 +50,8 @@ pub struct Client {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub address: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub preferences: Option<ClientPreferences>,
 }
 
@@ -143,6 +145,8 @@ pub struct NewServiceRequest {
     pub additional_costs: Option<Vec<AdditionalCost>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cost_estimate: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

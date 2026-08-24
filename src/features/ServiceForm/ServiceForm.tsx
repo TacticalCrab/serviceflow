@@ -56,6 +56,7 @@ function createDefaultValues(values?: FormSchema): FormSchema {
       phone: values?.client.phone,
       email: values?.client.email,
       address: values?.client.address,
+      note: values?.client.note,
       preferences: {
         checkIn: {
           method: values?.client.preferences?.checkIn?.method,
@@ -89,6 +90,7 @@ function createDefaultValues(values?: FormSchema): FormSchema {
     additionalCosts:
       values?.additionalCosts?.map((cost) => ({ ...cost })) ?? [],
     costEstimate: values?.costEstimate,
+    note: values?.note,
   }
 }
 
@@ -272,6 +274,28 @@ function ServiceForm({
                 )
               }}
             </form.Field>
+            <form.Field name="note">
+              {(field) => {
+                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field className="mt-4 max-w-2xl" data-invalid={isInvalid}>
+                    <FieldLabel htmlFor={field.name}>Notatka do zlecenia</FieldLabel>
+                    <Textarea
+                      id={field.name}
+                      name={field.name}
+                      value={field.state.value ?? ""}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                      aria-invalid={isInvalid}
+                      placeholder="Dodatkowe informacje dotyczące tego zlecenia"
+                      rows={3}
+                    />
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            </form.Field>
           </FieldSet>
 
           <FieldSet className="order-4 rounded-lg border p-4">
@@ -388,6 +412,29 @@ function ServiceForm({
                         autoComplete="street-address"
                         rows={2}
                       />
+                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                    </Field>
+                  )
+                }}
+              </form.Field>
+              <form.Field name="client.note">
+                {(field) => {
+                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                  return (
+                    <Field className="sm:col-span-2" data-invalid={isInvalid}>
+                      <FieldLabel htmlFor={field.name}>Notatka o kliencie</FieldLabel>
+                      <Textarea
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value ?? ""}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                        aria-invalid={isInvalid}
+                        placeholder="Informacje pomocne przy obsłudze tego klienta"
+                        rows={3}
+                      />
+                      <FieldDescription>Opis klienta widoczny przy tym zleceniu.</FieldDescription>
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
                   )

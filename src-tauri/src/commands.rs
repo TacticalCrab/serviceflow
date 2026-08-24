@@ -685,6 +685,7 @@ mod tests {
                 phone: Some("123456789".into()),
                 email: None,
                 address: None,
+                note: None,
                 preferences: None,
             },
             device: Device {
@@ -702,6 +703,7 @@ mod tests {
             ]),
             additional_costs: Some(vec![]),
             cost_estimate: Some(250.0),
+            note: None,
         }
     }
 

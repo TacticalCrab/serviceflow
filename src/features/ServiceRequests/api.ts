@@ -50,6 +50,7 @@ function serviceRequestToFormValues(request: ServiceRequest): FormSchema {
       phone: request.client.phone ?? undefined,
       email: request.client.email ?? undefined,
       address: request.client.address ?? undefined,
+      note: request.client.note ?? undefined,
       preferences: preferences
         ? {
             repairCard: preferences.repairCard ?? undefined,
@@ -88,6 +89,7 @@ function serviceRequestToFormValues(request: ServiceRequest): FormSchema {
     repairSteps: request.repairSteps ? [...request.repairSteps] : undefined,
     additionalCosts: request.additionalCosts?.map((cost) => ({ ...cost })),
     costEstimate: request.costEstimate ?? undefined,
+    note: request.note ?? undefined,
   }
 }
 

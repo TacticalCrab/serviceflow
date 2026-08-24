@@ -142,6 +142,11 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
             <DetailItem label="Telefon" value={request.client.phone} />
             <DetailItem label="E-mail" value={request.client.email} />
             <DetailItem label="Adres" value={request.client.address} />
+            {request.client.note && (
+              <div className="sm:col-span-2">
+                <DetailItem label="Notatka o kliencie" value={request.client.note} />
+              </div>
+            )}
             <DetailItem
               label="Karta naprawy"
               value={preferences?.repairCard ? "Tak" : "Nie"}
@@ -208,6 +213,15 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
               )}
             />
           </dl>
+
+          {request.note && (
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Notatka do zlecenia
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm">{request.note}</p>
+            </div>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div>
