@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { format, isValid, parse } from "date-fns"
 import {
   DayPicker,
   getDefaultClassNames,
@@ -10,7 +11,50 @@ import {
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 
 import { Button, buttonVariants } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+
+type ManualDateInput = {
+  value?: Date
+  onValueChange: (date: Date | undefined) => void
+  placeholder?: string
+}
+
+function parseManualDate(value: string) {
+  for (const dateFormat of ["dd.MM.yyyy", "yyyy-MM-dd"]) {
+    const date = parse(value, dateFormat, new Date())
+    if (isValid(date) && format(date, dateFormat) === value) return date
+  }
+
+  return undefined
+}
+
+function CalendarManualDateInput({ value, onValueChange, placeholder }: ManualDateInput) {
+  const [inputValue, setInputValue] = React.useState(
+    value ? format(value, "dd.MM.yyyy") : ""
+  )
+
+  React.useEffect(() => {
+    setInputValue(value ? format(value, "dd.MM.yyyy") : "")
+  }, [value])
+
+  return (
+    <div className="px-2 pt-2">
+      <Input
+        value={inputValue}
+        onChange={(event) => setInputValue(event.target.value)}
+        onBlur={() => {
+          const trimmedValue = inputValue.trim()
+          const date = trimmedValue ? parseManualDate(trimmedValue) : undefined
+          onValueChange(date)
+          setInputValue(date ? format(date, "dd.MM.yyyy") : "")
+        }}
+        placeholder={placeholder ?? "DD.MM.RRRR"}
+        aria-label="Wpisz datę ręcznie"
+      />
+    </div>
+  )
+}
 
 function Calendar({
   className,
@@ -21,19 +65,20 @@ function Calendar({
   locale,
   formatters,
   components,
+  manualDateInput,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+  manualDateInput?: ManualDateInput
 }) {
   const defaultClassNames = getDefaultClassNames()
 
   return (
-    <DayPicker
+    <div className={cn("w-fit bg-background", className)}>
+      {manualDateInput && <CalendarManualDateInput {...manualDateInput} />}
+      <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn(
-        "group/calendar bg-background p-2 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(7)] in-data-[slot=popover-content]:bg-transparent",
-        className
-      )}
+        className="group/calendar bg-transparent p-2 [--cell-radius:var(--radius-md)] [--cell-size:--spacing(7)] in-data-[slot=popover-content]:bg-transparent"
       captionLayout={captionLayout}
       locale={locale}
       formatters={{
@@ -113,7 +158,8 @@ function Calendar({
         ...components,
       }}
       {...props}
-    />
+      />
+    </div>
   )
 }
 

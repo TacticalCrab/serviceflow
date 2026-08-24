@@ -90,6 +90,14 @@ function PeriodPicker({ label, value, onChange, disabled }: PeriodPickerProps) {
             onChange(date)
             setOpen(false)
           }}
+          manualDateInput={{
+            value,
+            onValueChange: (date) => {
+              if (!date) return
+              onChange(date)
+              setOpen(false)
+            },
+          }}
           disabled={disabled}
           locale={pl}
           autoFocus

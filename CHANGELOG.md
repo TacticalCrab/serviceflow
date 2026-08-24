@@ -11,3 +11,4 @@ Second version after feedback
 - Feautre: Default value inputs & editor
 - Update: grayout hashtag in request id
 - Feature: set date and time of service request creation
+- Update: add shadcn calendar inputs to every date time input, and enable manual date input

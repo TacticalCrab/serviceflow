@@ -123,6 +123,13 @@ function IssueDatePicker({
             onChange(date ? format(date, "yyyy-MM-dd") : "")
             setOpen(false)
           }}
+          manualDateInput={{
+            value: selectedDate,
+            onValueChange: (date) => {
+              onChange(date ? format(date, "yyyy-MM-dd") : "")
+              setOpen(false)
+            },
+          }}
           locale={pl}
           autoFocus
         />
