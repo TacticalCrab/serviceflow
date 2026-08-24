@@ -187,10 +187,7 @@ function normalizePerformedActions(values: readonly string[]) {
 function collectServiceRequestActions(request?: ServiceRequest | null) {
   if (!request) return []
 
-  const sourceActions = [
-    ...(request.repairSteps ?? []),
-    ...(request.additionalCosts ?? []).map((cost) => cost.description),
-  ]
+  const sourceActions = request.repairSteps ?? []
   const seenActions = new Set<string>()
 
   return sourceActions.flatMap(splitPerformedActions).filter((action) => {
@@ -225,13 +222,8 @@ function createRepairCardData(
   settings: FirmSettings,
   request?: ServiceRequest | null
 ): RepairCardData {
-  const additionalCosts =
-    request?.additionalCosts?.reduce((total, cost) => total + cost.price, 0) ?? 0
-  const hasAmount =
-    request?.costEstimate !== undefined || Boolean(request?.additionalCosts?.length)
-  const amount = hasAmount
-    ? editableAmount((request?.costEstimate ?? 0) + additionalCosts)
-    : ""
+  const amount =
+    request?.costEstimate !== undefined ? editableAmount(request.costEstimate) : ""
 
   return {
     issuePlace: settings.city?.trim() ?? "",
