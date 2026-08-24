@@ -77,6 +77,7 @@ type TableColumnId =
   | "repairTime"
   | "estimate"
   | "additionalCosts"
+  | "profit"
   | "status"
   | "checkIn"
   | "checkOut"
@@ -95,6 +96,7 @@ const tableColumnOptions: Array<{ id: TableColumnId; label: string }> = [
   { id: "repairTime", label: "Czas naprawy" },
   { id: "estimate", label: "Kwota końcowa" },
   { id: "additionalCosts", label: "Wydatki" },
+  { id: "profit", label: "Zysk" },
   { id: "status", label: "Status" },
   { id: "checkIn", label: "Przyjęcie sprzętu" },
   { id: "checkOut", label: "Zwrot sprzętu" },
@@ -117,6 +119,7 @@ const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   repairTime: false,
   estimate: true,
   additionalCosts: false,
+  profit: false,
   status: true,
   checkIn: true,
   checkOut: true,
@@ -273,6 +276,8 @@ function sortableValue(
       return finalPrice(request.costEstimate, request.additionalCosts) ?? -1
     case "additionalCosts":
       return totalAdditionalExpenses(request.additionalCosts)
+    case "profit":
+      return (finalPrice(request.costEstimate, request.additionalCosts) ?? 0) - totalAdditionalExpenses(request.additionalCosts)
     case "status":
       return statusOrder.indexOf(request.status)
     case "checkIn":
@@ -361,6 +366,7 @@ function requestMatchesSearch(request: ServiceRequest, query: string) {
     formatCost(request.costEstimate),
     finalPrice(request.costEstimate, request.additionalCosts),
     formatCost(finalPrice(request.costEstimate, request.additionalCosts)),
+    (finalPrice(request.costEstimate, request.additionalCosts) ?? 0) - totalAdditionalExpenses(request.additionalCosts),
     ...(request.repairSteps ?? []),
     ...(request.additionalCosts?.flatMap((cost) => [cost.description, cost.price]) ?? []),
     searchableDate(request.createdAt),
@@ -404,6 +410,13 @@ function RepairsView() {
   ]
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
   const deleted = Boolean((location.state as { deleted?: boolean } | null)?.deleted)
+
+  useEffect(() => {
+    const requestedStatus = new URLSearchParams(location.search).get("status")
+    if (requestedStatus === "active" || requestedStatus === "closed") {
+      setStatusFilter(requestedStatus)
+    }
+  }, [location.search])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -562,6 +575,10 @@ function RepairsView() {
       case "repairTime": return <td key={column} className="whitespace-nowrap px-4 py-3">{request.repairTime ?? "—"}</td>
       case "estimate": return <td key={column} className="px-4 py-3 text-right font-semibold tabular-nums">{formatCost(finalPrice(request.costEstimate, request.additionalCosts))}</td>
       case "additionalCosts": return <td key={column} className="px-4 py-3 tabular-nums">{additionalCostsTotal(request)}</td>
+      case "profit": {
+        const profit = (finalPrice(request.costEstimate, request.additionalCosts) ?? 0) - totalAdditionalExpenses(request.additionalCosts)
+        return <td key={column} className={cn("px-4 py-3 text-right font-semibold tabular-nums", profit < 0 ? "text-destructive" : "text-emerald-700 dark:text-emerald-300")}>{formatCost(profit)}</td>
+      }
       case "checkIn": return <td key={column} className="px-4 py-3"><TransportCell request={request} direction="checkIn" /></td>
       case "checkOut": return <td key={column} className="px-4 py-3"><TransportCell request={request} direction="checkOut" /></td>
       case "createdAt": return <td key={column} className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCreatedAt(request.createdAt)}</td>

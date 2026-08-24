@@ -5,7 +5,7 @@ const REPAIRS_TABLE_COLUMNS = [
   ["device", "Urządzenie"], ["manufacturer", "Producent"], ["model", "Model"],
   ["serialNumber", "Numer seryjny"], ["defect", "Opis usterki"],
   ["repairTime", "Czas naprawy"], ["estimate", "Kwota końcowa"],
-  ["additionalCosts", "Wydatki"], ["checkIn", "Przyjęcie"], ["checkOut", "Zwrot"],
+  ["additionalCosts", "Wydatki"], ["profit", "Zysk"], ["checkIn", "Przyjęcie"], ["checkOut", "Zwrot"],
   ["createdAt", "Utworzono"], ["statusChangedAt", "Zmiana statusu"],
 ] as const
 

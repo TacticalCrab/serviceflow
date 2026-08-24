@@ -115,6 +115,7 @@ type StatCardProps = {
   description: React.ReactNode
   icon: React.ComponentType<{ className?: string }>
   accent?: "primary" | "success" | "warning"
+  to?: string
 }
 
 function StatCard({
@@ -123,9 +124,10 @@ function StatCard({
   description,
   icon: Icon,
   accent = "primary",
+  to,
 }: StatCardProps) {
-  return (
-    <Card className="min-h-44">
+  const card = (
+    <Card className={cn("min-h-44", to && "transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md")}>
       <CardHeader className="grid grid-cols-[1fr_auto] gap-3">
         <div className="space-y-1">
           <CardDescription>{title}</CardDescription>
@@ -149,6 +151,8 @@ function StatCard({
       </CardContent>
     </Card>
   )
+
+  return to ? <Link to={to} className="block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50">{card}</Link> : card
 }
 
 type ScheduledTransportCardProps = {
@@ -458,6 +462,7 @@ function HomeView() {
           value={statValue(stats.inProgress)}
           description="Zlecenia przyjęte w wybranym okresie"
           icon={WrenchIcon}
+          to="/naprawy?status=active"
         />
         <StatCard
           title="Naprawione ekspresy"
@@ -465,6 +470,7 @@ function HomeView() {
           description="Zlecenia zamknięte w wybranym okresie"
           icon={CheckCircle2Icon}
           accent="success"
+          to="/naprawy?status=closed"
         />
         <StatCard
           title="Koszt / zysk"
@@ -477,6 +483,7 @@ function HomeView() {
           }
           icon={WalletCardsIcon}
           accent={stats.profit < 0 ? "warning" : "success"}
+          to="/naprawy?status=closed"
         />
       </div>
 
