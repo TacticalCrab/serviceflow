@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useForm } from "@tanstack/react-form"
+import { Link } from "react-router"
 import {
   Building2Icon,
   CheckCircle2Icon,
@@ -178,13 +179,18 @@ function FirmSettingsView() {
 
   return (
     <section className="space-y-6">
-      <header className="space-y-2">
-        <p className="text-sm font-medium text-muted-foreground">Dokumenty</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Dane firmy</h1>
-        <p className="max-w-2xl text-muted-foreground">
-          Dane zapisane tutaj będą automatycznie umieszczane w nagłówku generowanych
-          dokumentów serwisowych.
-        </p>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-muted-foreground">Ustawienia</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Dane firmy</h1>
+          <p className="max-w-2xl text-muted-foreground">
+            Dane zapisane tutaj będą automatycznie umieszczane w nagłówku generowanych
+            dokumentów serwisowych.
+          </p>
+        </div>
+        <Button variant="outline" nativeButton={false} render={<Link to="/ustawienia/konfiguracja" />}>
+          Konfiguracja
+        </Button>
       </header>
 
       {loadError && (

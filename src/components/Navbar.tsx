@@ -53,9 +53,9 @@ function Navbar() {
           variant="ghost"
           size="icon"
           nativeButton={false}
-          render={<Link to="/ustawienia/dokumentow" />}
-          aria-label="Ustawienia dokumentów"
-          title="Ustawienia dokumentów"
+          render={<Link to="/ustawienia/firma" />}
+          aria-label="Ustawienia firmy"
+          title="Ustawienia firmy"
         >
           <SettingsIcon />
         </Button>

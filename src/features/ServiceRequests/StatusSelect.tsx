@@ -13,8 +13,9 @@ import type { ServiceStatus } from "@/features/ServiceRequests/api"
 import {
   serviceStatusDotClasses,
   serviceStatusLabels,
-  serviceStatusOptions,
+  serviceStatusSelectClasses,
 } from "@/features/ServiceRequests/status"
+import { useOrderedServiceStatuses } from "@/features/ServiceRequests/statusOrder"
 import { cn } from "@/lib/utils"
 
 type StatusSelectProps = {
@@ -34,9 +35,11 @@ function StatusSelect({
   className,
   "aria-label": ariaLabel = "Status zlecenia",
 }: StatusSelectProps) {
+  const statusOptions = useOrderedServiceStatuses()
+
   return (
     <Select
-      items={serviceStatusOptions}
+      items={statusOptions}
       value={value}
       onValueChange={(nextValue) => {
         if (nextValue) onValueChange(nextValue as ServiceStatus)
@@ -48,8 +51,9 @@ function StatusSelect({
         aria-label={ariaLabel}
         className={cn(
           compact
-            ? "w-auto min-w-0 border-transparent bg-muted/70 px-2 shadow-none hover:bg-muted data-pressed:bg-muted"
+            ? "w-auto min-w-0 border-transparent px-2 shadow-none"
             : "w-full min-w-56",
+          compact && serviceStatusSelectClasses[value],
           className
         )}
       >
@@ -75,7 +79,7 @@ function StatusSelect({
       >
         <SelectGroup>
           <SelectLabel>Zmień status zlecenia</SelectLabel>
-          {serviceStatusOptions.map((status) => (
+          {statusOptions.map((status) => (
             <SelectItem key={status.value} value={status.value}>
               <span
                 className={cn(

@@ -381,7 +381,7 @@ function RepairCardView() {
             type="button"
             variant="outline"
             nativeButton={false}
-            render={<Link to="/ustawienia/dokumentow" />}
+            render={<Link to="/ustawienia/firma" />}
             className="border-amber-600/30 bg-white/60 hover:bg-white dark:bg-transparent"
           >
             <SettingsIcon data-icon="inline-start" />

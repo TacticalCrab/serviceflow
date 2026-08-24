@@ -6,6 +6,7 @@ import {
   useBlocker,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router"
 import { format } from "date-fns"
 import { pl } from "date-fns/locale"
@@ -259,12 +260,13 @@ function RequestDetails({ request }: { request: ServiceRequest }) {
 function RequestDetailsView() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
   const requestId = Number(id)
   const [request, setRequest] = useState<ServiceRequest | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(() => searchParams.get("edit") === "1")
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)

@@ -27,22 +27,44 @@ const serviceStatusBadgeClasses: Record<ServiceStatus, string> = {
   waiting_for_device: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
   diagnosis: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   waiting_for_approval: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
-  in_repair: "bg-primary/10 text-primary",
+  in_repair: "bg-red-500/10 text-red-800 dark:text-red-300",
   waiting_for_parts: "bg-orange-500/10 text-orange-800 dark:text-orange-300",
-  ready_for_return: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
-  closed: "bg-muted text-muted-foreground",
-  cancelled: "bg-destructive/10 text-destructive",
+  ready_for_return: "bg-cyan-500/10 text-cyan-800 dark:text-cyan-300",
+  closed: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
+  cancelled: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
 }
 
 const serviceStatusDotClasses: Record<ServiceStatus, string> = {
   waiting_for_device: "bg-slate-500",
   diagnosis: "bg-sky-500",
   waiting_for_approval: "bg-amber-500",
-  in_repair: "bg-primary",
+  in_repair: "bg-red-500",
   waiting_for_parts: "bg-orange-500",
-  ready_for_return: "bg-emerald-500",
-  closed: "bg-muted-foreground",
-  cancelled: "bg-destructive",
+  ready_for_return: "bg-cyan-500",
+  closed: "bg-emerald-500",
+  cancelled: "bg-slate-500",
+}
+
+const serviceStatusRowClasses: Record<ServiceStatus, string> = {
+  waiting_for_device: "bg-slate-500/5 hover:bg-slate-500/10",
+  diagnosis: "bg-sky-500/5 hover:bg-sky-500/10",
+  waiting_for_approval: "bg-amber-500/5 hover:bg-amber-500/10",
+  in_repair: "bg-red-500/5 hover:bg-red-500/10",
+  waiting_for_parts: "bg-orange-500/5 hover:bg-orange-500/10",
+  ready_for_return: "bg-cyan-500/5 hover:bg-cyan-500/10",
+  closed: "bg-emerald-500/5 hover:bg-emerald-500/10",
+  cancelled: "bg-slate-500/5 hover:bg-slate-500/10",
+}
+
+const serviceStatusSelectClasses: Record<ServiceStatus, string> = {
+  waiting_for_device: "bg-slate-600 text-white hover:bg-slate-700 data-pressed:bg-slate-700",
+  diagnosis: "bg-sky-600 text-white hover:bg-sky-700 data-pressed:bg-sky-700",
+  waiting_for_approval: "bg-amber-400 text-amber-950 hover:bg-amber-500 data-pressed:bg-amber-500",
+  in_repair: "bg-red-600 text-white hover:bg-red-700 data-pressed:bg-red-700",
+  waiting_for_parts: "bg-orange-500 text-white hover:bg-orange-600 data-pressed:bg-orange-600",
+  ready_for_return: "bg-cyan-600 text-white hover:bg-cyan-700 data-pressed:bg-cyan-700",
+  closed: "bg-emerald-600 text-white hover:bg-emerald-700 data-pressed:bg-emerald-700",
+  cancelled: "bg-slate-500 text-white hover:bg-slate-600 data-pressed:bg-slate-600",
 }
 
 function isActiveServiceStatus(status: ServiceStatus) {
@@ -57,4 +79,6 @@ export {
   serviceStatusDotClasses,
   serviceStatusLabels,
   serviceStatusOptions,
+  serviceStatusRowClasses,
+  serviceStatusSelectClasses,
 }

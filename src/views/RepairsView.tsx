@@ -4,15 +4,24 @@ import { format } from "date-fns"
 import { pl } from "date-fns/locale"
 import {
   CheckCircle2Icon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ChevronsUpDownIcon,
+  CircleCheckIcon,
   CircleAlertIcon,
   EyeIcon,
+  FileTextIcon,
   LoaderCircleIcon,
+  PencilIcon,
+  RotateCcwIcon,
   SearchIcon,
+  SlidersHorizontalIcon,
   WrenchIcon,
   XIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Card,
   CardContent,
@@ -21,6 +30,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 import {
   Select,
   SelectContent,
@@ -31,6 +47,7 @@ import {
 } from "@/components/ui/select"
 import {
   listServiceRequests,
+  reopenServiceRequest,
   updateServiceRequestStatus,
   type ServiceRequest,
   type ServiceStatus,
@@ -38,17 +55,104 @@ import {
 import { StatusSelect } from "@/features/ServiceRequests/StatusSelect"
 import {
   isActiveServiceStatus,
+  serviceStatusDotClasses,
   serviceStatusLabels,
-  serviceStatusOptions,
 } from "@/features/ServiceRequests/status"
+import { useOrderedServiceStatuses } from "@/features/ServiceRequests/statusOrder"
+import { cn } from "@/lib/utils"
 
 type StatusFilter = ServiceStatus | "active" | "all"
+type SortDirection = "desc" | "asc" | null
+type TableColumnId =
+  | "customer"
+  | "phone"
+  | "device"
+  | "manufacturer"
+  | "model"
+  | "serialNumber"
+  | "defect"
+  | "repairTime"
+  | "estimate"
+  | "additionalCosts"
+  | "status"
+  | "checkIn"
+  | "checkOut"
+  | "createdAt"
+  | "statusChangedAt"
+type SortColumn = "id" | TableColumnId
 
-const statusFilterOptions: Array<{ value: StatusFilter; label: string }> = [
-  { value: "active", label: "Wszystkie aktywne" },
-  ...serviceStatusOptions.map(({ value, label }) => ({ value, label })),
-  { value: "all", label: "Wszystkie statusy" },
+const tableColumnOptions: Array<{ id: TableColumnId; label: string }> = [
+  { id: "customer", label: "Klient" },
+  { id: "phone", label: "Telefon" },
+  { id: "device", label: "Urządzenie" },
+  { id: "manufacturer", label: "Producent" },
+  { id: "model", label: "Model" },
+  { id: "serialNumber", label: "Numer seryjny" },
+  { id: "defect", label: "Opis usterki" },
+  { id: "repairTime", label: "Czas naprawy" },
+  { id: "estimate", label: "Wycena" },
+  { id: "additionalCosts", label: "Dodatkowe koszty" },
+  { id: "status", label: "Status" },
+  { id: "checkIn", label: "Przyjęcie sprzętu" },
+  { id: "checkOut", label: "Zwrot sprzętu" },
+  { id: "createdAt", label: "Data utworzenia" },
+  { id: "statusChangedAt", label: "Zmiana statusu" },
 ]
+
+const COLUMN_VISIBILITY_STORAGE_KEY = "cafe-service.repairs-table-columns"
+const STATUS_FILTER_STORAGE_KEY = "cafe-service.repairs-status-filter"
+
+const defaultColumnVisibility: Record<TableColumnId, boolean> = {
+  customer: true,
+  phone: false,
+  device: true,
+  manufacturer: false,
+  model: false,
+  serialNumber: false,
+  defect: false,
+  repairTime: false,
+  estimate: true,
+  additionalCosts: false,
+  status: true,
+  checkIn: false,
+  checkOut: false,
+  createdAt: true,
+  statusChangedAt: false,
+}
+
+function loadColumnVisibility(): Record<TableColumnId, boolean> {
+  try {
+    const savedValue = window.localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY)
+    if (!savedValue) return defaultColumnVisibility
+
+    const savedColumns = JSON.parse(savedValue) as Partial<Record<TableColumnId, unknown>>
+    return tableColumnOptions.reduce(
+      (columns, column) => ({
+        ...columns,
+        [column.id]:
+          typeof savedColumns[column.id] === "boolean"
+            ? savedColumns[column.id]
+            : defaultColumnVisibility[column.id],
+      }),
+      {} as Record<TableColumnId, boolean>
+    )
+  } catch {
+    return defaultColumnVisibility
+  }
+}
+
+function loadStatusFilter(): StatusFilter {
+  try {
+    const savedValue = window.localStorage.getItem(STATUS_FILTER_STORAGE_KEY)
+    if (savedValue === "active" || savedValue === "all") return savedValue
+
+    return savedValue && savedValue in serviceStatusLabels
+      ? (savedValue as ServiceStatus)
+      : "active"
+  } catch {
+    return "active"
+  }
+}
 
 function formatCreatedAt(value: string) {
   const date = new Date(value)
@@ -65,6 +169,105 @@ function formatCost(value: number | undefined) {
     style: "currency",
     currency: "PLN",
   }).format(value)
+}
+
+function formatTransport(
+  request: ServiceRequest,
+  direction: "checkIn" | "checkOut"
+) {
+  const transport = request.client.preferences?.[direction]
+  if (!transport?.method) return "Nie ustalono"
+
+  const label =
+    transport.method === "servicePickup"
+      ? "Odbiór przez serwis"
+      : transport.method === "serviceDelivery"
+        ? "Dostawa przez serwis"
+        : transport.method === "clientDropOff"
+          ? "Klient przywozi"
+          : "Klient odbiera"
+  const date = transport.date ? formatCreatedAt(transport.date) : undefined
+
+  return [label, date].filter(Boolean).join(" · ")
+}
+
+function additionalCostsTotal(request: ServiceRequest) {
+  const costs = request.additionalCosts ?? []
+  if (!costs.length) return "—"
+
+  return formatCost(costs.reduce((total, cost) => total + cost.price, 0))
+}
+
+function sortableValue(
+  request: ServiceRequest,
+  column: SortColumn,
+  statusOrder: ServiceStatus[]
+) {
+  switch (column) {
+    case "id":
+      return request.id
+    case "customer":
+      return [request.client.name, request.client.surname].filter(Boolean).join(" ")
+    case "phone":
+      return request.client.phone ?? ""
+    case "device":
+      return request.device.name
+    case "manufacturer":
+      return request.device.manufacturer ?? ""
+    case "model":
+      return request.device.model ?? ""
+    case "serialNumber":
+      return request.device.serialNumber ?? ""
+    case "defect":
+      return request.device.defect ?? ""
+    case "repairTime":
+      return request.repairTime ?? ""
+    case "estimate":
+      return request.costEstimate ?? -1
+    case "additionalCosts":
+      return (request.additionalCosts ?? []).reduce((total, cost) => total + cost.price, 0)
+    case "status":
+      return statusOrder.indexOf(request.status)
+    case "checkIn":
+      return formatTransport(request, "checkIn")
+    case "checkOut":
+      return formatTransport(request, "checkOut")
+    case "createdAt":
+      return request.createdAt
+    case "statusChangedAt":
+      return request.statusChangedAt
+  }
+}
+
+function SortableColumnHeader({
+  label,
+  column,
+  activeColumn,
+  direction,
+  onSort,
+}: {
+  label: string
+  column: SortColumn
+  activeColumn: SortColumn | null
+  direction: SortDirection
+  onSort: (column: SortColumn) => void
+}) {
+  const isActive = activeColumn === column && direction !== null
+  const Icon = isActive ? (direction === "asc" ? ChevronUpIcon : ChevronDownIcon) : ChevronsUpDownIcon
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="-ml-2 h-auto px-2 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
+      onClick={() => onSort(column)}
+      aria-label={`Sortuj według: ${label}`}
+    >
+      {label}
+      <Icon className={isActive ? "opacity-100" : "opacity-45"} />
+    </Button>
+  )
 }
 
 function normalizeSearchValue(value: unknown) {
@@ -133,11 +336,20 @@ function RepairsView() {
   const [requests, setRequests] = useState<ServiceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(loadStatusFilter)
   const [searchQuery, setSearchQuery] = useState("")
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+  const [visibleColumns, setVisibleColumns] = useState(loadColumnVisibility)
   const [updatingStatusIds, setUpdatingStatusIds] = useState<Set<number>>(
     () => new Set()
   )
+  const orderedStatusOptions = useOrderedServiceStatuses()
+  const statusFilterOptions: Array<{ value: StatusFilter; label: string }> = [
+    { value: "all", label: "Wszystkie Statusy" },
+    { value: "active", label: "Wszystkie Aktywne" },
+    ...orderedStatusOptions.map(({ value, label }) => ({ value, label })),
+  ]
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
   const deleted = Boolean((location.state as { deleted?: boolean } | null)?.deleted)
   const filteredRequests = useMemo(
@@ -152,6 +364,20 @@ function RepairsView() {
       ),
     [requests, searchQuery, statusFilter]
   )
+  const sortedRequests = useMemo(() => {
+    if (!sortColumn || !sortDirection) return filteredRequests
+
+    return [...filteredRequests].sort((first, second) => {
+      const firstValue = sortableValue(first, sortColumn, orderedStatusOptions.map(({ value }) => value))
+      const secondValue = sortableValue(second, sortColumn, orderedStatusOptions.map(({ value }) => value))
+      const comparison =
+        typeof firstValue === "number" && typeof secondValue === "number"
+          ? firstValue - secondValue
+          : String(firstValue).localeCompare(String(secondValue), "pl")
+
+      return sortDirection === "asc" ? comparison : -comparison
+    })
+  }, [filteredRequests, orderedStatusOptions, sortColumn, sortDirection])
 
   useEffect(() => {
     let cancelled = false
@@ -178,6 +404,14 @@ function RepairsView() {
     }
   }, [])
 
+  useEffect(() => {
+    window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(visibleColumns))
+  }, [visibleColumns])
+
+  useEffect(() => {
+    window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, statusFilter)
+  }, [statusFilter])
+
   async function handleStatusChange(request: ServiceRequest, status: ServiceStatus) {
     if (request.status === status) return
 
@@ -200,6 +434,45 @@ function RepairsView() {
         next.delete(request.id)
         return next
       })
+    }
+  }
+
+  async function handleReopen(request: ServiceRequest) {
+    setError(null)
+    setUpdatingStatusIds((current) => new Set(current).add(request.id))
+    try {
+      const updatedRequest = await reopenServiceRequest(request.id)
+      setRequests((current) =>
+        current.map((item) => (item.id === request.id ? updatedRequest : item))
+      )
+    } catch (reopenError) {
+      setError(
+        typeof reopenError === "string"
+          ? reopenError
+          : `Nie udało się wznowić zlecenia #${request.id}.`
+      )
+    } finally {
+      setUpdatingStatusIds((current) => {
+        const next = new Set(current)
+        next.delete(request.id)
+        return next
+      })
+    }
+  }
+
+  function toggleColumn(column: TableColumnId, visible: boolean) {
+    setVisibleColumns((current) => ({ ...current, [column]: visible }))
+  }
+
+  function cycleSort(column: SortColumn) {
+    if (sortColumn !== column || sortDirection === null) {
+      setSortColumn(column)
+      setSortDirection("desc")
+    } else if (sortDirection === "desc") {
+      setSortDirection("asc")
+    } else {
+      setSortColumn(null)
+      setSortDirection(null)
     }
   }
 
@@ -234,7 +507,8 @@ function RepairsView() {
         </div>
       )}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <Card className="bg-muted/20">
+        <CardContent className="flex flex-col gap-4 pt-6 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1.5">
           <label className="text-sm font-medium">
             Status
@@ -253,6 +527,14 @@ function RepairsView() {
               <SelectGroup>
                 {statusFilterOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
+                    {option.value !== "all" && option.value !== "active" && (
+                      <span
+                        className={cn(
+                          "size-2 shrink-0 rounded-full",
+                          serviceStatusDotClasses[option.value]
+                        )}
+                      />
+                    )}
                     {option.label}
                   </SelectItem>
                 ))}
@@ -261,7 +543,8 @@ function RepairsView() {
           </Select>
         </div>
 
-        <div className="w-full lg:max-w-md">
+        <div className="flex w-full gap-2 lg:max-w-xl">
+          <div className="min-w-0 flex-1">
           <label htmlFor="service-request-search" className="sr-only">
             Wyszukaj zlecenie serwisowe
           </label>
@@ -289,19 +572,60 @@ function RepairsView() {
               </Button>
             )}
           </div>
+          </div>
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button type="button" variant="outline" size="icon" aria-label="Wybierz widoczne kolumny" />
+              }
+            >
+              <SlidersHorizontalIcon />
+            </PopoverTrigger>
+            <PopoverContent align="end" className="max-h-96 w-64 overflow-y-auto p-3">
+              <p className="px-1 pb-2 text-sm font-medium">Widoczne kolumny</p>
+              <div className="grid gap-2">
+                {tableColumnOptions.map((column) => (
+                  <label key={column.id} className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 hover:bg-muted">
+                    <Checkbox
+                      checked={visibleColumns[column.id]}
+                      onCheckedChange={(checked) => toggleColumn(column.id, checked === true)}
+                    />
+                    <span>{column.label}</span>
+                  </label>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-2 w-full"
+                onClick={() => setVisibleColumns(defaultColumnVisibility)}
+              >
+                Przywróć domyślne
+              </Button>
+            </PopoverContent>
+          </Popover>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Zlecenia serwisowe</CardTitle>
-          <CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle>Zlecenia serwisowe</CardTitle>
+            <CardDescription>
             {loading
               ? "Pobieranie zleceń…"
               : searchQuery.trim()
                 ? `${filteredRequests.length} z ${requests.length} zleceń`
                 : `${filteredRequests.length} ${filteredRequests.length === 1 ? "zlecenie" : "zleceń"}`}
-          </CardDescription>
+            </CardDescription>
+          </div>
+          {!loading && (
+            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-sm font-medium text-primary">
+              {filteredRequests.length}
+            </span>
+          )}
         </CardHeader>
         <CardContent className={filteredRequests.length > 0 ? "px-0" : undefined}>
           {loading ? (
@@ -328,23 +652,49 @@ function RepairsView() {
               <table className="w-full min-w-3xl text-left text-sm">
                 <thead className="border-y bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Zlecenie</th>
-                    <th className="px-4 py-3 font-medium">Klient</th>
-                    <th className="px-4 py-3 font-medium">Urządzenie</th>
-                    <th className="px-4 py-3 font-medium">Wycena</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Utworzono</th>
+                    <th className="px-4 py-3" aria-sort={sortColumn === "id" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
+                      <SortableColumnHeader label="Zlecenie" column="id" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} />
+                    </th>
+                    {visibleColumns.status && <th className="px-4 py-3" aria-sort={sortColumn === "status" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Status" column="status" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.customer && <th className="px-4 py-3" aria-sort={sortColumn === "customer" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Klient" column="customer" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.phone && <th className="px-4 py-3" aria-sort={sortColumn === "phone" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Telefon" column="phone" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.device && <th className="px-4 py-3" aria-sort={sortColumn === "device" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Urządzenie" column="device" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.manufacturer && <th className="px-4 py-3" aria-sort={sortColumn === "manufacturer" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Producent" column="manufacturer" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.model && <th className="px-4 py-3" aria-sort={sortColumn === "model" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Model" column="model" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.serialNumber && <th className="px-4 py-3" aria-sort={sortColumn === "serialNumber" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Numer seryjny" column="serialNumber" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.defect && <th className="px-4 py-3" aria-sort={sortColumn === "defect" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Opis usterki" column="defect" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.repairTime && <th className="px-4 py-3" aria-sort={sortColumn === "repairTime" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Czas naprawy" column="repairTime" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.estimate && <th className="px-4 py-3" aria-sort={sortColumn === "estimate" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Wycena" column="estimate" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.additionalCosts && <th className="px-4 py-3" aria-sort={sortColumn === "additionalCosts" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Dodatkowe koszty" column="additionalCosts" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.checkIn && <th className="px-4 py-3" aria-sort={sortColumn === "checkIn" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Przyjęcie" column="checkIn" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.checkOut && <th className="px-4 py-3" aria-sort={sortColumn === "checkOut" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Zwrot" column="checkOut" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.createdAt && <th className="px-4 py-3" aria-sort={sortColumn === "createdAt" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Utworzono" column="createdAt" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.statusChangedAt && <th className="px-4 py-3" aria-sort={sortColumn === "statusChangedAt" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Zmiana statusu" column="statusChangedAt" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     <th className="px-4 py-3 text-right font-medium">Akcje</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filteredRequests.map((request) => (
-                    <tr key={request.id} className="transition-colors hover:bg-muted/30">
+                  {sortedRequests.map((request) => (
+                    <ContextMenu key={request.id}>
+                      <ContextMenuTrigger
+                        render={<tr className="transition-colors hover:bg-muted/30" />}
+                      >
                       <td className="px-4 py-3 font-medium">
                         <span className="text-muted-foreground/70">#</span>
                         {request.id}
                       </td>
-                      <td className="px-4 py-3">
+                      {visibleColumns.status && <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                        <StatusSelect
+                          value={request.status}
+                          onValueChange={(status) =>
+                            void handleStatusChange(request, status)
+                          }
+                          disabled={updatingStatusIds.has(request.id)}
+                          compact
+                          aria-label={`Status zlecenia #${request.id}`}
+                        />
+                      </td>}
+                      {visibleColumns.customer && <td className="px-4 py-3">
                         <div className="font-medium">
                           {request.client.name} {request.client.surname}
                         </div>
@@ -353,8 +703,9 @@ function RepairsView() {
                             {request.client.phone}
                           </div>
                         )}
-                      </td>
-                      <td className="px-4 py-3">
+                      </td>}
+                      {visibleColumns.phone && <td className="whitespace-nowrap px-4 py-3">{request.client.phone ?? "—"}</td>}
+                      {visibleColumns.device && <td className="px-4 py-3">
                         <div className="font-medium">{request.device.name}</div>
                         {(request.device.manufacturer ||
                           request.device.model ||
@@ -371,36 +722,65 @@ function RepairsView() {
                               .join(" · ")}
                           </div>
                         )}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums">
+                      </td>}
+                      {visibleColumns.manufacturer && <td className="px-4 py-3">{request.device.manufacturer ?? "—"}</td>}
+                      {visibleColumns.model && <td className="px-4 py-3">{request.device.model ?? "—"}</td>}
+                      {visibleColumns.serialNumber && <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{request.device.serialNumber ?? "—"}</td>}
+                      {visibleColumns.defect && <td className="max-w-64 px-4 py-3 text-muted-foreground">{request.device.defect ?? "—"}</td>}
+                      {visibleColumns.repairTime && <td className="whitespace-nowrap px-4 py-3">{request.repairTime ?? "—"}</td>}
+                      {visibleColumns.estimate && <td className="px-4 py-3 tabular-nums">
                         {formatCost(request.costEstimate)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusSelect
-                          value={request.status}
-                          onValueChange={(status) =>
-                            void handleStatusChange(request, status)
-                          }
-                          disabled={updatingStatusIds.has(request.id)}
-                          compact
-                          aria-label={`Status zlecenia #${request.id}`}
-                        />
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                      </td>}
+                      {visibleColumns.additionalCosts && <td className="px-4 py-3 tabular-nums">{additionalCostsTotal(request)}</td>}
+                      {visibleColumns.checkIn && <td className="max-w-56 px-4 py-3 text-muted-foreground">{formatTransport(request, "checkIn")}</td>}
+                      {visibleColumns.checkOut && <td className="max-w-56 px-4 py-3 text-muted-foreground">{formatTransport(request, "checkOut")}</td>}
+                      {visibleColumns.createdAt && <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {formatCreatedAt(request.createdAt)}
+                      </td>}
+                      {visibleColumns.statusChangedAt && <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCreatedAt(request.statusChangedAt)}</td>}
+                      <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link to={`/naprawy/${request.id}?edit=1`} />} aria-label={`Edytuj zlecenie #${request.id}`} title="Edytuj zlecenie">
+                            <PencilIcon />
+                          </Button>
+                          <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link to={`/naprawy/${request.id}`} />} aria-label={`Otwórz zlecenie #${request.id}`} title="Otwórz zlecenie">
+                            <EyeIcon />
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon-sm" disabled={(!isActiveServiceStatus(request.status) && request.status !== "closed") || updatingStatusIds.has(request.id)} onClick={() => void (request.status === "closed" ? handleReopen(request) : handleStatusChange(request, "closed"))} aria-label={`${request.status === "closed" ? "Wznów" : "Zamknij"} zlecenie #${request.id}`} title={request.status === "closed" ? "Wznów zlecenie" : "Zamknij zlecenie"}>
+                            {request.status === "closed" ? <RotateCcwIcon className="text-sky-600" /> : <CircleCheckIcon className="text-emerald-600" />}
+                          </Button>
+                          <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link to={`/naprawy/${request.id}/karta-naprawy`} />} aria-label={`Otwórz kartę naprawy zlecenia #${request.id}`} title="Karta naprawy">
+                            <FileTextIcon />
+                          </Button>
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          nativeButton={false}
-                          render={<Link to={`/naprawy/${request.id}`} />}
-                        >
-                          <EyeIcon data-icon="inline-start" />
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem render={<Link to={`/naprawy/${request.id}?edit=1`} />}>
+                          <PencilIcon className="size-4" />
+                          Edytuj
+                        </ContextMenuItem>
+                        <ContextMenuItem render={<Link to={`/naprawy/${request.id}`} />}>
+                          <EyeIcon className="size-4" />
                           Otwórz
-                        </Button>
-                      </td>
-                    </tr>
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          disabled={(!isActiveServiceStatus(request.status) && request.status !== "closed") || updatingStatusIds.has(request.id)}
+                          onClick={() => void (request.status === "closed" ? handleReopen(request) : handleStatusChange(request, "closed"))}
+                        >
+                          {request.status === "closed" ? (
+                            <RotateCcwIcon className="size-4 text-sky-600" />
+                          ) : (
+                            <CircleCheckIcon className="size-4 text-emerald-600" />
+                          )}
+                          {request.status === "closed" ? "Wznów" : "Zamknij"}
+                        </ContextMenuItem>
+                        <ContextMenuItem render={<Link to={`/naprawy/${request.id}/karta-naprawy`} />}>
+                          <FileTextIcon className="size-4" />
+                          Karta naprawy
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
                   ))}
                 </tbody>
               </table>
