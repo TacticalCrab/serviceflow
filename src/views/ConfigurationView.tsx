@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react"
 import {
   DndContext,
+  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core"
 import {
   SortableContext,
   arrayMove,
   sortableKeyboardCoordinates,
   useSortable,
+  rectSortingStrategy,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
@@ -64,6 +67,7 @@ import {
   serviceStatusLabels,
 } from "@/features/ServiceRequests/status"
 import { saveStatusOrder, useStatusOrder } from "@/features/ServiceRequests/statusOrder"
+import { defaultRepairsTableColumnOrder, REPAIRS_TABLE_COLUMNS, saveRepairsTableColumnOrder, useRepairsTableColumnOrder, type RepairsTableColumn } from "@/features/ServiceRequests/tableColumnOrder"
 import { cn } from "@/lib/utils"
 
 function SortableStatus({ status, index }: { status: ServiceStatus; index: number }) {
@@ -98,17 +102,27 @@ function SortableStatus({ status, index }: { status: ServiceStatus; index: numbe
   )
 }
 
+function SortableTableColumn({ column }: { column: readonly [RepairsTableColumn, string] }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: column[0] })
+  return <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn("flex w-40 shrink-0 items-center gap-1.5 rounded-md border bg-background px-2.5 py-2 text-sm font-medium", isDragging && "opacity-0")}>
+    <GripVerticalIcon className="size-4 shrink-0 text-muted-foreground" {...attributes} {...listeners} /><span className="truncate">{column[1]}</span>
+  </li>
+}
+
 function ConfigurationView() {
   const configuredOrder = useStatusOrder()
   const configuredProducers = useDeviceProducers()
   const configuredSteps = useServiceSteps()
   const configuredFontSize = useAppFontSize()
+  const configuredColumnOrder = useRepairsTableColumnOrder()
   const [order, setOrder] = useState(configuredOrder)
   const [producers, setProducers] = useState(configuredProducers)
   const [steps, setSteps] = useState(configuredSteps)
   const [newProducer, setNewProducer] = useState("")
   const [newStep, setNewStep] = useState("")
   const [fontSize, setFontSize] = useState(configuredFontSize)
+  const [columnOrder, setColumnOrder] = useState(configuredColumnOrder)
+  const [activeColumn, setActiveColumn] = useState<RepairsTableColumn | null>(null)
   const [saving, setSaving] = useState(false)
   const [savingProducers, setSavingProducers] = useState(false)
   const [savingSteps, setSavingSteps] = useState(false)
@@ -123,6 +137,9 @@ function ConfigurationView() {
     JSON.stringify(normalizeServiceSteps(steps)) !==
     JSON.stringify(normalizeServiceSteps(configuredSteps))
   const fontSizeDirty = fontSize !== configuredFontSize
+  const columnOrderDirty = JSON.stringify(columnOrder) !== JSON.stringify(configuredColumnOrder)
+  const columnOrderIsDefault =
+    JSON.stringify(columnOrder) === JSON.stringify(defaultRepairsTableColumnOrder)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -143,6 +160,7 @@ function ConfigurationView() {
   useEffect(() => {
     setFontSize(configuredFontSize)
   }, [configuredFontSize])
+  useEffect(() => { setColumnOrder(configuredColumnOrder) }, [configuredColumnOrder])
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
@@ -155,6 +173,25 @@ function ConfigurationView() {
         ? current
         : arrayMove(current, sourceIndex, targetIndex)
     })
+  }
+
+  function handleColumnDragEnd({ active, over }: DragEndEvent) {
+    setActiveColumn(null)
+    if (!over || active.id === over.id) return
+    setColumnOrder((current) => {
+      const next = arrayMove(current, current.indexOf(active.id as RepairsTableColumn), current.indexOf(over.id as RepairsTableColumn))
+      setSaved(false)
+      return next
+    })
+  }
+
+  function handleColumnDragStart({ active }: DragStartEvent) {
+    setActiveColumn(active.id as RepairsTableColumn)
+  }
+
+  function handleSaveColumnOrder() {
+    saveRepairsTableColumnOrder(columnOrder)
+    setSaved(true)
   }
 
   async function handleSave() {
@@ -509,6 +546,41 @@ function ConfigurationView() {
         <CardContent className="flex items-start gap-3 pt-6 text-sm text-muted-foreground">
           <Settings2Icon className="mt-0.5 size-4 shrink-0" />
           Kolejne ustawienia operacyjne będą dostępne w tym widoku.
+        </CardContent>
+      </Card>
+
+      <Card className="order-6 xl:col-span-2">
+        <CardHeader className="p-4 pb-0">
+          <CardTitle className="text-base">Kolejność kolumn napraw</CardTitle>
+          <CardDescription>
+            Przeciągnij kolumnę w lewo lub w prawo, aby zmienić jej pozycję na liście napraw.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleColumnDragStart} onDragEnd={handleColumnDragEnd} onDragCancel={() => setActiveColumn(null)}>
+            <SortableContext items={columnOrder} strategy={rectSortingStrategy}>
+              <ol className="flex flex-wrap gap-2">
+                {columnOrder.map((id) => {
+                  const column = REPAIRS_TABLE_COLUMNS.find(([columnId]) => columnId === id)
+                  return column ? <SortableTableColumn key={id} column={column} /> : null
+                })}
+              </ol>
+            </SortableContext>
+            <DragOverlay dropAnimation={null}>
+              {activeColumn && (() => {
+                const column = REPAIRS_TABLE_COLUMNS.find(([columnId]) => columnId === activeColumn)
+                return column ? <div className="flex w-40 items-center gap-1.5 rounded-md border bg-background px-2.5 py-2 text-sm font-medium shadow-lg"><GripVerticalIcon className="size-4 shrink-0 text-muted-foreground" /><span className="truncate">{column[1]}</span></div> : null
+              })()}
+            </DragOverlay>
+          </DndContext>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => { setColumnOrder(defaultRepairsTableColumnOrder); setSaved(false) }} disabled={columnOrderIsDefault}>
+              Przywróć domyślną kolejność
+            </Button>
+            <Button type="button" size="sm" onClick={handleSaveColumnOrder} disabled={!columnOrderDirty}>
+              Zapisz kolejność
+            </Button>
+          </div>
         </CardContent>
       </Card>
       </div>

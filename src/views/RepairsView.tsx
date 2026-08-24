@@ -60,6 +60,7 @@ import {
 } from "@/features/ServiceRequests/status"
 import { useOrderedServiceStatuses } from "@/features/ServiceRequests/statusOrder"
 import { finalPrice, totalAdditionalExpenses } from "@/features/ServiceRequests/pricing"
+import { useRepairsTableColumnOrder } from "@/features/ServiceRequests/tableColumnOrder"
 import { cn } from "@/lib/utils"
 import { formatPhoneNumber } from "@/lib/phone"
 
@@ -391,6 +392,7 @@ function RepairsView() {
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(savedSort.column)
   const [sortDirection, setSortDirection] = useState<SortDirection>(savedSort.direction)
   const [visibleColumns, setVisibleColumns] = useState(loadColumnVisibility)
+  const columnOrder = useRepairsTableColumnOrder()
   const [updatingStatusIds, setUpdatingStatusIds] = useState<Set<number>>(
     () => new Set()
   )
@@ -544,6 +546,26 @@ function RepairsView() {
     } else {
       setSortColumn(null)
       setSortDirection(null)
+    }
+  }
+
+  function renderTableCell(request: ServiceRequest, column: TableColumnId) {
+    switch (column) {
+      case "status": return <td key={column} className="px-4 py-3" onClick={(event) => event.stopPropagation()}><StatusSelect value={request.status} onValueChange={(status) => void handleStatusChange(request, status)} disabled={updatingStatusIds.has(request.id)} compact className="h-7 text-xs" aria-label={`Status zlecenia #${request.id}`} /></td>
+      case "customer": return <td key={column} className="px-4 py-3"><div className="font-medium">{request.client.name} {request.client.surname}</div>{!visibleColumns.phone && request.client.phone && <div className="text-xs text-muted-foreground">{formatPhoneNumber(request.client.phone)}</div>}</td>
+      case "phone": return <td key={column} className="whitespace-nowrap px-4 py-3">{request.client.phone ? formatPhoneNumber(request.client.phone) : "—"}</td>
+      case "device": return <td key={column} className="px-4 py-3"><div className="font-medium">{request.device.name}</div><div className="text-xs text-muted-foreground">{[request.device.manufacturer, request.device.model, request.device.serialNumber ? `S/N: ${request.device.serialNumber}` : undefined].filter(Boolean).join(" · ")}</div></td>
+      case "manufacturer": return <td key={column} className="px-4 py-3">{request.device.manufacturer ?? "—"}</td>
+      case "model": return <td key={column} className="px-4 py-3">{request.device.model ?? "—"}</td>
+      case "serialNumber": return <td key={column} className="whitespace-nowrap px-4 py-3 font-mono text-xs">{request.device.serialNumber ?? "—"}</td>
+      case "defect": return <td key={column} className="max-w-56 px-4 py-3 text-muted-foreground" title={request.device.defect ?? undefined}><span className="line-clamp-2">{request.device.defect ?? "—"}</span></td>
+      case "repairTime": return <td key={column} className="whitespace-nowrap px-4 py-3">{request.repairTime ?? "—"}</td>
+      case "estimate": return <td key={column} className="px-4 py-3 text-right font-semibold tabular-nums">{formatCost(finalPrice(request.costEstimate, request.additionalCosts))}</td>
+      case "additionalCosts": return <td key={column} className="px-4 py-3 tabular-nums">{additionalCostsTotal(request)}</td>
+      case "checkIn": return <td key={column} className="px-4 py-3"><TransportCell request={request} direction="checkIn" /></td>
+      case "checkOut": return <td key={column} className="px-4 py-3"><TransportCell request={request} direction="checkOut" /></td>
+      case "createdAt": return <td key={column} className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCreatedAt(request.createdAt)}</td>
+      case "statusChangedAt": return <td key={column} className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCreatedAt(request.statusChangedAt)}</td>
     }
   }
 
@@ -743,6 +765,7 @@ function RepairsView() {
                     <th className="px-4 py-3" aria-sort={sortColumn === "id" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
                       <SortableColumnHeader label="Zlecenie" column="id" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} />
                     </th>
+                    {false && <>
                     {visibleColumns.status && <th className="px-4 py-3" aria-sort={sortColumn === "status" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Status" column="status" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.customer && <th className="px-4 py-3" aria-sort={sortColumn === "customer" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Klient" column="customer" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.phone && <th className="px-4 py-3" aria-sort={sortColumn === "phone" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Telefon" column="phone" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
@@ -758,6 +781,8 @@ function RepairsView() {
                     {visibleColumns.checkOut && <th className="px-4 py-3" aria-sort={sortColumn === "checkOut" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Zwrot" column="checkOut" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.createdAt && <th className="px-4 py-3" aria-sort={sortColumn === "createdAt" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Utworzono" column="createdAt" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.statusChangedAt && <th className="px-4 py-3" aria-sort={sortColumn === "statusChangedAt" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Zmiana statusu" column="statusChangedAt" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    </>}
+                    {columnOrder.filter((column) => visibleColumns[column]).map((column) => <th key={column} className={column === "estimate" ? "px-4 py-3 text-right" : "px-4 py-3"} aria-sort={sortColumn === column && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label={tableColumnOptions.find((option) => option.id === column)?.label ?? column} column={column} activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>)}
                     <th className="px-4 py-3 text-right font-medium">Akcje</th>
                   </tr>
                 </thead>
@@ -771,6 +796,7 @@ function RepairsView() {
                         <span className="text-muted-foreground/70">#</span>
                         {request.id}
                       </td>
+                      {false && <>
                       {visibleColumns.status && <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                         <StatusSelect
                           value={request.status}
@@ -827,6 +853,8 @@ function RepairsView() {
                         {formatCreatedAt(request.createdAt)}
                       </td>}
                       {visibleColumns.statusChangedAt && <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCreatedAt(request.statusChangedAt)}</td>}
+                      </>}
+                      {columnOrder.filter((column) => visibleColumns[column]).map((column) => renderTableCell(request, column))}
                       <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="icon-sm" nativeButton={false} render={<Link to={`/naprawy/${request.id}?edit=1`} />} aria-label={`Edytuj zlecenie #${request.id}`} title="Edytuj zlecenie">
