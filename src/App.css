@@ -169,6 +169,14 @@
     print-color-adjust: exact;
   }
 
+  #root:has([data-repair-card-layout]) {
+    min-height: 0 !important;
+  }
+
+  [data-repair-card-layout] {
+    min-height: 0 !important;
+  }
+
   .repair-card-view,
   .repair-card-workspace,
   .repair-card-preview-column {
