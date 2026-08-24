@@ -49,6 +49,7 @@ type ServiceFormProps = {
 
 function createDefaultValues(values?: FormSchema): FormSchema {
   return {
+    requestedCreatedAt: values?.requestedCreatedAt ?? new Date(),
     client: {
       name: values?.client.name ?? "",
       surname: values?.client.surname,
@@ -213,6 +214,37 @@ function ServiceForm({
         </CardHeader>
 
         <CardContent className="space-y-6">
+          <FieldSet className="rounded-lg border p-4">
+            <FieldLegend>Dane zlecenia</FieldLegend>
+            <form.Field name="requestedCreatedAt">
+              {(field) => {
+                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field className="max-w-sm" data-invalid={isInvalid}>
+                    <FieldLabel htmlFor={field.name}>Data i godzina utworzenia</FieldLabel>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      type="datetime-local"
+                      value={format(field.state.value, "yyyy-MM-dd'T'HH:mm")}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => {
+                        const date = new Date(event.target.value)
+                        if (!Number.isNaN(date.getTime())) field.handleChange(date)
+                      }}
+                      aria-invalid={isInvalid}
+                    />
+                    <FieldDescription>
+                      Domyślnie ustawiany jest bieżący moment. Możesz go skorygować.
+                    </FieldDescription>
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            </form.Field>
+          </FieldSet>
+
           <FieldSet className="rounded-lg border p-4">
             <FieldLegend>Dane klienta</FieldLegend>
             <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">

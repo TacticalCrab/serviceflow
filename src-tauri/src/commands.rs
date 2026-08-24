@@ -26,6 +26,14 @@ const SERVICE_STATUSES: [&str; 8] = [
 ];
 
 fn validate_request(request: &NewServiceRequest) -> Result<(), String> {
+    if request
+        .requested_created_at
+        .as_deref()
+        .is_some_and(|created_at| created_at.trim().is_empty())
+    {
+        return Err("Data utworzenia zlecenia nie może być pusta".into());
+    }
+
     if request.client.name.trim().is_empty() {
         return Err("Imię klienta jest wymagane".into());
     }
@@ -110,14 +118,16 @@ fn insert_request(
                 client_phone,
                 device_name,
                 status,
-                payload
-            ) VALUES (?1, ?2, ?3, 'waiting_for_device', ?4)
+                payload,
+                created_at
+            ) VALUES (?1, ?2, ?3, 'waiting_for_device', ?4, COALESCE(?5, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')))
             ",
             params![
                 request.client.name.trim(),
                 request.client.phone.as_deref(),
                 request.device.name.trim(),
                 payload,
+                request.requested_created_at.as_deref(),
             ],
         )
         .map_err(|error| format!("Nie udało się zapisać zlecenia: {error}"))?;
@@ -142,14 +152,16 @@ fn update_request(
             SET client_name = ?1,
                 client_phone = ?2,
                 device_name = ?3,
-                payload = ?4
-            WHERE id = ?5
+                payload = ?4,
+                created_at = COALESCE(?5, created_at)
+            WHERE id = ?6
             ",
             params![
                 request.client.name.trim(),
                 request.client.phone.as_deref(),
                 request.device.name.trim(),
                 payload,
+                request.requested_created_at.as_deref(),
                 id,
             ],
         )
@@ -666,6 +678,7 @@ mod tests {
 
     fn sample_request() -> NewServiceRequest {
         NewServiceRequest {
+            requested_created_at: None,
             client: Client {
                 name: "Anna".into(),
                 surname: Some("Nowak".into()),

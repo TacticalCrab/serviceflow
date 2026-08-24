@@ -10,3 +10,4 @@ Second version after feedback
 - Fix: Include only esitmated price into service card.
 - Feautre: Default value inputs & editor
 - Update: grayout hashtag in request id
+- Feature: set date and time of service request creation

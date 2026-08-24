@@ -43,6 +43,7 @@ function serviceRequestToFormValues(request: ServiceRequest): FormSchema {
   const preferences = request.client.preferences
 
   return {
+    requestedCreatedAt: parseDate(request.createdAt) ?? new Date(),
     client: {
       name: request.client.name,
       surname: request.client.surname ?? undefined,

@@ -131,6 +131,8 @@ pub struct AdditionalCost {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NewServiceRequest {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requested_created_at: Option<String>,
     pub client: Client,
     pub device: Device,
     #[serde(default, skip_serializing_if = "Option::is_none")]
