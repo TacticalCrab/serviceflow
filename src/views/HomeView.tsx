@@ -462,7 +462,7 @@ function HomeView() {
           value={statValue(stats.inProgress)}
           description="Zlecenia przyjęte w wybranym okresie"
           icon={WrenchIcon}
-          to="/naprawy?status=active"
+          to="/naprawy?preset=compact"
         />
         <StatCard
           title="Naprawione ekspresy"
@@ -470,7 +470,7 @@ function HomeView() {
           description="Zlecenia zamknięte w wybranym okresie"
           icon={CheckCircle2Icon}
           accent="success"
-          to="/naprawy?status=closed"
+          to="/naprawy?preset=financial"
         />
         <StatCard
           title="Koszt / zysk"
@@ -483,7 +483,7 @@ function HomeView() {
           }
           icon={WalletCardsIcon}
           accent={stats.profit < 0 ? "warning" : "success"}
-          to="/naprawy?status=closed"
+          to="/naprawy?preset=financial"
         />
       </div>
 

@@ -4,6 +4,7 @@ import { format, isValid } from "date-fns"
 import { pl } from "date-fns/locale"
 import {
   CheckCircle2Icon,
+  CalendarDaysIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   ChevronsUpDownIcon,
@@ -12,10 +13,14 @@ import {
   EyeIcon,
   FileTextIcon,
   LoaderCircleIcon,
+  PackageCheckIcon,
   PencilIcon,
   RotateCcwIcon,
+  SaveIcon,
   SearchIcon,
   SlidersHorizontalIcon,
+  TruckIcon,
+  WalletCardsIcon,
   WrenchIcon,
   XIcon,
 } from "lucide-react"
@@ -84,6 +89,7 @@ type TableColumnId =
   | "createdAt"
   | "statusChangedAt"
 type SortColumn = "id" | TableColumnId
+type ViewPreset = "compact" | "schedule" | "financial" | "intake" | "workshop" | "returns"
 
 const tableColumnOptions: Array<{ id: TableColumnId; label: string }> = [
   { id: "customer", label: "Klient" },
@@ -107,6 +113,7 @@ const tableColumnOptions: Array<{ id: TableColumnId; label: string }> = [
 const COLUMN_VISIBILITY_STORAGE_KEY = "cafe-service.repairs-table-columns-v2"
 const STATUS_FILTER_STORAGE_KEY = "cafe-service.repairs-status-filter"
 const TABLE_SORT_STORAGE_KEY = "cafe-service.repairs-table-sort"
+const VIEW_PRESET_STORAGE_KEY = "cafe-service.repairs-table-view-preset"
 
 const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   customer: true,
@@ -125,6 +132,45 @@ const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   checkOut: true,
   createdAt: false,
   statusChangedAt: false,
+}
+
+const viewPresetColumns: Record<ViewPreset, TableColumnId[]> = {
+  compact: ["status", "customer", "device", "estimate"],
+  schedule: ["status", "customer", "device", "checkIn", "checkOut"],
+  financial: ["status", "customer", "device", "estimate", "additionalCosts", "profit"],
+  intake: ["status", "customer", "phone", "device", "checkIn"],
+  workshop: ["status", "customer", "device", "defect", "repairTime", "createdAt"],
+  returns: ["status", "customer", "phone", "device", "checkOut"],
+}
+
+const viewPresetStatus: Record<ViewPreset, StatusFilter> = {
+  compact: "active",
+  schedule: "active",
+  financial: "closed",
+  intake: "waiting_for_device",
+  workshop: "in_repair",
+  returns: "ready_for_return",
+}
+
+function isViewPreset(value: unknown): value is ViewPreset {
+  return value === "compact" || value === "schedule" || value === "financial" || value === "intake" || value === "workshop" || value === "returns"
+}
+
+function loadViewPreset(): ViewPreset | null {
+  try {
+    const savedValue = window.localStorage.getItem(VIEW_PRESET_STORAGE_KEY)
+    return isViewPreset(savedValue) ? savedValue : null
+  } catch {
+    return null
+  }
+}
+
+function columnVisibilityForPreset(preset: ViewPreset): Record<TableColumnId, boolean> {
+  const presetColumns = viewPresetColumns[preset]
+  return tableColumnOptions.reduce(
+    (columns, column) => ({ ...columns, [column.id]: presetColumns.includes(column.id) }),
+    {} as Record<TableColumnId, boolean>
+  )
 }
 
 function loadColumnVisibility(): Record<TableColumnId, boolean> {
@@ -391,14 +437,24 @@ function RepairsView() {
   const [requests, setRequests] = useState<ServiceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(loadStatusFilter)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
+    const preset = loadViewPreset()
+    return preset ? viewPresetStatus[preset] : loadStatusFilter()
+  })
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [savedSort] = useState(loadTableSort)
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(savedSort.column)
   const [sortDirection, setSortDirection] = useState<SortDirection>(savedSort.direction)
-  const [visibleColumns, setVisibleColumns] = useState(loadColumnVisibility)
-  const columnOrder = useRepairsTableColumnOrder()
+  const [temporaryPreset, setTemporaryPreset] = useState<ViewPreset | null>(loadViewPreset)
+  const [visibleColumns, setVisibleColumns] = useState(() => {
+    const preset = loadViewPreset()
+    return preset ? columnVisibilityForPreset(preset) : loadColumnVisibility()
+  })
+  const persistedColumnOrder = useRepairsTableColumnOrder()
+  const columnOrder = temporaryPreset
+    ? [...viewPresetColumns[temporaryPreset], ...persistedColumnOrder.filter((column) => !viewPresetColumns[temporaryPreset].includes(column))]
+    : persistedColumnOrder
   const [updatingStatusIds, setUpdatingStatusIds] = useState<Set<number>>(
     () => new Set()
   )
@@ -412,9 +468,17 @@ function RepairsView() {
   const deleted = Boolean((location.state as { deleted?: boolean } | null)?.deleted)
 
   useEffect(() => {
-    const requestedStatus = new URLSearchParams(location.search).get("status")
+    const query = new URLSearchParams(location.search)
+    const requestedStatus = query.get("status")
     if (requestedStatus === "active" || requestedStatus === "closed") {
       setStatusFilter(requestedStatus)
+    }
+
+    const requestedPreset = query.get("preset")
+    if (isViewPreset(requestedPreset)) {
+      setTemporaryPreset(requestedPreset)
+      setVisibleColumns(columnVisibilityForPreset(requestedPreset))
+      setStatusFilter(viewPresetStatus[requestedPreset])
     }
   }, [location.search])
 
@@ -479,14 +543,17 @@ function RepairsView() {
   }, [])
 
   useEffect(() => {
+    if (temporaryPreset) return
     window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(visibleColumns))
-  }, [visibleColumns])
+  }, [temporaryPreset, visibleColumns])
 
   useEffect(() => {
+    if (temporaryPreset) return
     window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, statusFilter)
-  }, [statusFilter])
+  }, [statusFilter, temporaryPreset])
 
   useEffect(() => {
+    if (temporaryPreset) return
     if (!sortColumn || !sortDirection) {
       window.localStorage.removeItem(TABLE_SORT_STORAGE_KEY)
       return
@@ -496,7 +563,7 @@ function RepairsView() {
       TABLE_SORT_STORAGE_KEY,
       JSON.stringify({ column: sortColumn, direction: sortDirection })
     )
-  }, [sortColumn, sortDirection])
+  }, [sortColumn, sortDirection, temporaryPreset])
 
   async function handleStatusChange(request: ServiceRequest, status: ServiceStatus) {
     if (request.status === status) return
@@ -550,6 +617,23 @@ function RepairsView() {
     setVisibleColumns((current) => ({ ...current, [column]: visible }))
   }
 
+  function applyViewPreset(preset: ViewPreset) {
+    setTemporaryPreset(preset)
+    window.localStorage.setItem(VIEW_PRESET_STORAGE_KEY, preset)
+    setVisibleColumns(columnVisibilityForPreset(preset))
+    setStatusFilter(viewPresetStatus[preset])
+  }
+
+  function restoreSavedView() {
+    setTemporaryPreset(null)
+    window.localStorage.removeItem(VIEW_PRESET_STORAGE_KEY)
+    setStatusFilter(loadStatusFilter())
+    setVisibleColumns(loadColumnVisibility())
+    const savedViewSort = loadTableSort()
+    setSortColumn(savedViewSort.column)
+    setSortDirection(savedViewSort.direction)
+  }
+
   function cycleSort(column: SortColumn) {
     if (sortColumn !== column || sortDirection === null) {
       setSortColumn(column)
@@ -588,9 +672,11 @@ function RepairsView() {
 
   return (
     <section className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">Naprawy</h1>
-        <p className="text-muted-foreground">Lista zarejestrowanych napraw serwisowych.</p>
+      <header>
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tight">Naprawy</h1>
+          <p className="text-muted-foreground">Lista zarejestrowanych napraw serwisowych.</p>
+        </div>
       </header>
 
       {created && (
@@ -618,7 +704,17 @@ function RepairsView() {
       )}
 
       <Card className="bg-muted/20">
-        <CardContent className="flex flex-col gap-4 pt-6 lg:flex-row lg:items-end lg:justify-between">
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex flex-wrap justify-end gap-1" aria-label="Presety widoku tabeli">
+            <Button type="button" variant="outline" size="icon" className={cn("text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 dark:text-violet-400", temporaryPreset === "compact" && "border-violet-500/50 bg-violet-500/15")} onClick={() => applyViewPreset("compact")} aria-label="Kompaktowy widok" title="Kompaktowy widok"><SlidersHorizontalIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("text-sky-600 hover:bg-sky-500/10 hover:text-sky-700 dark:text-sky-400", temporaryPreset === "schedule" && "border-sky-500/50 bg-sky-500/15")} onClick={() => applyViewPreset("schedule")} aria-label="Widok terminów" title="Widok terminów"><CalendarDaysIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400", temporaryPreset === "financial" && "border-emerald-500/50 bg-emerald-500/15")} onClick={() => applyViewPreset("financial")} aria-label="Widok finansowy" title="Widok finansowy"><WalletCardsIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("text-slate-600 hover:bg-slate-500/10 hover:text-slate-700 dark:text-slate-300", temporaryPreset === "intake" && "border-slate-500/50 bg-slate-500/15")} onClick={() => applyViewPreset("intake")} aria-label="Widok przyjęć" title="Widok przyjęć"><PackageCheckIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400", temporaryPreset === "workshop" && "border-red-500/50 bg-red-500/15")} onClick={() => applyViewPreset("workshop")} aria-label="Widok warsztatu" title="Widok warsztatu"><WrenchIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("text-cyan-600 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-cyan-400", temporaryPreset === "returns" && "border-cyan-500/50 bg-cyan-500/15")} onClick={() => applyViewPreset("returns")} aria-label="Widok wydań" title="Widok wydań"><TruckIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400" onClick={restoreSavedView} aria-label="Przywróć zapisany widok" title="Przywróć zapisany widok"><SaveIcon /></Button>
+          </div>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1.5">
           <label className="text-sm font-medium">
             Status
@@ -627,7 +723,9 @@ function RepairsView() {
             items={statusFilterOptions}
             value={statusFilter}
             onValueChange={(value) => {
-              if (value) setStatusFilter(value as StatusFilter)
+              if (value) {
+                setStatusFilter(value as StatusFilter)
+              }
             }}
           >
             <SelectTrigger className="h-9 w-64" aria-label="Filtr statusu">
@@ -732,7 +830,8 @@ function RepairsView() {
               Wyczyść sortowanie
             </Button>
           )}
-        </div>
+          </div>
+          </div>
         </CardContent>
       </Card>
 

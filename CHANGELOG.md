@@ -26,3 +26,4 @@ Second version after feedback
 - Update: CTRL + S to save service form
 - Feature: scroll into view on form validation error & minor changes
 - Feature: order of columns in table of repairs
+- Feature: presets & minor changes

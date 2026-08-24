@@ -1131,6 +1131,15 @@ function ServiceForm({
                       ))}
                     </div>
                   )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => field.pushValue("")}
+                  >
+                    <PlusIcon data-icon="inline-start" />
+                    Dodaj kolejny krok
+                  </Button>
                 </Field>
               )}
             </form.Field>
@@ -1332,6 +1341,17 @@ function ServiceForm({
                       ))}
                     </div>
                   )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() =>
+                      field.pushValue({ description: "", price: 0, includeInFinalPrice: true })
+                    }
+                  >
+                    <PlusIcon data-icon="inline-start" />
+                    Dodaj kolejny koszt
+                  </Button>
                 </Field>
               )}
             </form.Field>
