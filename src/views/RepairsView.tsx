@@ -101,8 +101,9 @@ const tableColumnOptions: Array<{ id: TableColumnId; label: string }> = [
   { id: "statusChangedAt", label: "Zmiana statusu" },
 ]
 
-const COLUMN_VISIBILITY_STORAGE_KEY = "cafe-service.repairs-table-columns"
+const COLUMN_VISIBILITY_STORAGE_KEY = "cafe-service.repairs-table-columns-v2"
 const STATUS_FILTER_STORAGE_KEY = "cafe-service.repairs-status-filter"
+const TABLE_SORT_STORAGE_KEY = "cafe-service.repairs-table-sort"
 
 const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   customer: true,
@@ -111,14 +112,14 @@ const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   manufacturer: false,
   model: false,
   serialNumber: false,
-  defect: false,
+  defect: true,
   repairTime: false,
   estimate: true,
   additionalCosts: false,
   status: true,
-  checkIn: false,
-  checkOut: false,
-  createdAt: true,
+  checkIn: true,
+  checkOut: true,
+  createdAt: false,
   statusChangedAt: false,
 }
 
@@ -153,6 +154,25 @@ function loadStatusFilter(): StatusFilter {
       : "active"
   } catch {
     return "active"
+  }
+}
+
+function loadTableSort(): { column: SortColumn | null; direction: SortDirection } {
+  try {
+    const savedValue = window.localStorage.getItem(TABLE_SORT_STORAGE_KEY)
+    if (!savedValue) return { column: null, direction: null }
+
+    const savedSort = JSON.parse(savedValue) as { column?: unknown; direction?: unknown }
+    const isKnownColumn =
+      savedSort.column === "id" ||
+      tableColumnOptions.some((column) => column.id === savedSort.column)
+    const isKnownDirection = savedSort.direction === "asc" || savedSort.direction === "desc"
+
+    return isKnownColumn && isKnownDirection
+      ? { column: savedSort.column as SortColumn, direction: savedSort.direction as SortDirection }
+      : { column: null, direction: null }
+  } catch {
+    return { column: null, direction: null }
   }
 }
 
@@ -366,8 +386,10 @@ function RepairsView() {
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(loadStatusFilter)
   const [searchQuery, setSearchQuery] = useState("")
-  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null)
-  const [sortDirection, setSortDirection] = useState<SortDirection>(null)
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
+  const [savedSort] = useState(loadTableSort)
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(savedSort.column)
+  const [sortDirection, setSortDirection] = useState<SortDirection>(savedSort.direction)
   const [visibleColumns, setVisibleColumns] = useState(loadColumnVisibility)
   const [updatingStatusIds, setUpdatingStatusIds] = useState<Set<number>>(
     () => new Set()
@@ -380,6 +402,15 @@ function RepairsView() {
   ]
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
   const deleted = Boolean((location.state as { deleted?: boolean } | null)?.deleted)
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 250)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [searchQuery])
+
   const filteredRequests = useMemo(
     () =>
       requests.filter(
@@ -388,9 +419,9 @@ function RepairsView() {
             (statusFilter === "active"
               ? isActiveServiceStatus(request.status)
               : request.status === statusFilter)) &&
-          requestMatchesSearch(request, searchQuery)
+          requestMatchesSearch(request, debouncedSearchQuery)
       ),
-    [requests, searchQuery, statusFilter]
+    [debouncedSearchQuery, requests, statusFilter]
   )
   const sortedRequests = useMemo(() => {
     if (!sortColumn || !sortDirection) return filteredRequests
@@ -439,6 +470,18 @@ function RepairsView() {
   useEffect(() => {
     window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, statusFilter)
   }, [statusFilter])
+
+  useEffect(() => {
+    if (!sortColumn || !sortDirection) {
+      window.localStorage.removeItem(TABLE_SORT_STORAGE_KEY)
+      return
+    }
+
+    window.localStorage.setItem(
+      TABLE_SORT_STORAGE_KEY,
+      JSON.stringify({ column: sortColumn, direction: sortDirection })
+    )
+  }, [sortColumn, sortDirection])
 
   async function handleStatusChange(request: ServiceRequest, status: ServiceStatus) {
     if (request.status === status) return
@@ -593,7 +636,10 @@ function RepairsView() {
                 variant="ghost"
                 size="icon-sm"
                 className="absolute right-1 top-1"
-                onClick={() => setSearchQuery("")}
+                onClick={() => {
+                  setSearchQuery("")
+                  setDebouncedSearchQuery("")
+                }}
                 aria-label="Wyczyść wyszukiwanie"
               >
                 <XIcon />
@@ -633,6 +679,20 @@ function RepairsView() {
               </Button>
             </PopoverContent>
           </Popover>
+          {sortColumn && sortDirection && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSortColumn(null)
+                setSortDirection(null)
+              }}
+            >
+              <RotateCcwIcon data-icon="inline-start" />
+              Wyczyść sortowanie
+            </Button>
+          )}
         </div>
         </CardContent>
       </Card>
@@ -644,7 +704,7 @@ function RepairsView() {
             <CardDescription>
             {loading
               ? "Pobieranie zleceń…"
-              : searchQuery.trim()
+              : debouncedSearchQuery.trim()
                 ? `${filteredRequests.length} z ${requests.length} zleceń`
                 : `${filteredRequests.length} ${filteredRequests.length === 1 ? "zlecenie" : "zleceń"}`}
             </CardDescription>
@@ -669,7 +729,7 @@ function RepairsView() {
               <div>
                 <p className="font-medium">Brak zleceń</p>
                 <p className="text-sm text-muted-foreground">
-                  {searchQuery.trim()
+                  {debouncedSearchQuery.trim()
                     ? "Nie znaleziono zleceń pasujących do wyszukiwania i wybranego statusu."
                     : "Nie ma zleceń o wybranym statusie."}
                 </p>
@@ -677,7 +737,7 @@ function RepairsView() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-3xl text-left text-sm">
+              <table className="w-full min-w-[1100px] text-left text-sm">
                 <thead className="border-y bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3" aria-sort={sortColumn === "id" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
@@ -692,7 +752,7 @@ function RepairsView() {
                     {visibleColumns.serialNumber && <th className="px-4 py-3" aria-sort={sortColumn === "serialNumber" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Numer seryjny" column="serialNumber" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.defect && <th className="px-4 py-3" aria-sort={sortColumn === "defect" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Opis usterki" column="defect" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.repairTime && <th className="px-4 py-3" aria-sort={sortColumn === "repairTime" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Czas naprawy" column="repairTime" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
-                    {visibleColumns.estimate && <th className="px-4 py-3" aria-sort={sortColumn === "estimate" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Kwota końcowa" column="estimate" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
+                    {visibleColumns.estimate && <th className="px-4 py-3 text-right" aria-sort={sortColumn === "estimate" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Kwota końcowa" column="estimate" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.additionalCosts && <th className="px-4 py-3" aria-sort={sortColumn === "additionalCosts" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Wydatki" column="additionalCosts" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.checkIn && <th className="px-4 py-3" aria-sort={sortColumn === "checkIn" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Przyjęcie" column="checkIn" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
                     {visibleColumns.checkOut && <th className="px-4 py-3" aria-sort={sortColumn === "checkOut" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}><SortableColumnHeader label="Zwrot" column="checkOut" activeColumn={sortColumn} direction={sortDirection} onSort={cycleSort} /></th>}
@@ -719,6 +779,7 @@ function RepairsView() {
                           }
                           disabled={updatingStatusIds.has(request.id)}
                           compact
+                          className="h-7 text-xs"
                           aria-label={`Status zlecenia #${request.id}`}
                         />
                       </td>}
@@ -726,7 +787,7 @@ function RepairsView() {
                         <div className="font-medium">
                           {request.client.name} {request.client.surname}
                         </div>
-                        {request.client.phone && (
+                        {!visibleColumns.phone && request.client.phone && (
                           <div className="text-xs text-muted-foreground">
                             {formatPhoneNumber(request.client.phone)}
                           </div>
@@ -754,9 +815,9 @@ function RepairsView() {
                       {visibleColumns.manufacturer && <td className="px-4 py-3">{request.device.manufacturer ?? "—"}</td>}
                       {visibleColumns.model && <td className="px-4 py-3">{request.device.model ?? "—"}</td>}
                       {visibleColumns.serialNumber && <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{request.device.serialNumber ?? "—"}</td>}
-                      {visibleColumns.defect && <td className="max-w-64 px-4 py-3 text-muted-foreground">{request.device.defect ?? "—"}</td>}
+                      {visibleColumns.defect && <td className="max-w-56 px-4 py-3 text-muted-foreground" title={request.device.defect ?? undefined}><span className="line-clamp-2">{request.device.defect ?? "—"}</span></td>}
                       {visibleColumns.repairTime && <td className="whitespace-nowrap px-4 py-3">{request.repairTime ?? "—"}</td>}
-                      {visibleColumns.estimate && <td className="px-4 py-3 tabular-nums">
+                      {visibleColumns.estimate && <td className="px-4 py-3 text-right font-semibold tabular-nums">
                         {formatCost(finalPrice(request.costEstimate, request.additionalCosts))}
                       </td>}
                       {visibleColumns.additionalCosts && <td className="px-4 py-3 tabular-nums">{additionalCostsTotal(request)}</td>}

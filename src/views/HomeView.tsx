@@ -3,6 +3,7 @@ import { Link } from "react-router"
 import {
   endOfDay,
   endOfMonth,
+  differenceInCalendarDays,
   format,
   isAfter,
   isBefore,
@@ -211,6 +212,15 @@ function ScheduledTransportCard({
       : timeMode === "range" && (timeFrom || timeTo)
         ? `Godziny: ${timeFrom ?? "—"}–${timeTo ?? "—"}`
         : null
+  const daysUntilTransport = differenceInCalendarDays(startOfDay(date), startOfDay(new Date()))
+  const urgencyBadge =
+    daysUntilTransport === 0
+      ? { label: "Dzisiaj", className: "bg-destructive/10 text-destructive" }
+      : daysUntilTransport === 1
+        ? { label: "Jutro", className: "bg-amber-500/15 text-amber-900 dark:text-amber-200" }
+        : daysUntilTransport === 2
+          ? { label: "Za 2 dni", className: "bg-primary/10 text-primary" }
+          : null
 
   return (
     <Link
@@ -231,7 +241,14 @@ function ScheduledTransportCard({
                 {request.id}
               </CardDescription>
             </div>
-            <ArrowRightIcon className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            <div className="flex items-center gap-2">
+              {urgencyBadge && (
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${urgencyBadge.className}`}>
+                  {urgencyBadge.label}
+                </span>
+              )}
+              <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
