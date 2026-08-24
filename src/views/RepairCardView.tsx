@@ -5,9 +5,12 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import { format, isValid, parseISO } from "date-fns"
+import { pl } from "date-fns/locale"
 import { Link, useParams } from "react-router"
 import {
   ArrowLeftIcon,
+  CalendarIcon,
   CircleAlertIcon,
   FileTextIcon,
   LoaderCircleIcon,
@@ -26,8 +29,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Field,
+  FieldDescription,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
 import {
   getFirmSettings,
   type FirmSettings,
@@ -57,18 +67,64 @@ function FormField({
   children: ReactNode
 }) {
   return (
-    <div className="grid gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+    <Field>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       {children}
       {description && (
-        <p
+        <FieldDescription
           id={id + "-description"}
-          className="text-xs leading-relaxed text-muted-foreground"
         >
           {description}
-        </p>
+        </FieldDescription>
       )}
-    </div>
+    </Field>
+  )
+}
+
+function IssueDatePicker({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const parsedDate = value ? parseISO(value) : undefined
+  const selectedDate = parsedDate && isValid(parsedDate) ? parsedDate : undefined
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            id="repair-card-date"
+            type="button"
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !selectedDate && "text-muted-foreground"
+            )}
+          />
+        }
+      >
+        <CalendarIcon data-icon="inline-start" />
+        {selectedDate
+          ? format(selectedDate, "PPP", { locale: pl })
+          : "Wybierz datę"}
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selectedDate}
+          onSelect={(date) => {
+            onChange(date ? format(date, "yyyy-MM-dd") : "")
+            setOpen(false)
+          }}
+          locale={pl}
+          autoFocus
+        />
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -379,11 +435,9 @@ function RepairCardView() {
                     />
                   </FormField>
                   <FormField id="repair-card-date" label="Data wystawienia">
-                    <Input
-                      id="repair-card-date"
-                      type="date"
+                    <IssueDatePicker
                       value={data.issueDate}
-                      onChange={(event) => updateField("issueDate", event.target.value)}
+                      onChange={(value) => updateField("issueDate", value)}
                     />
                   </FormField>
                 </div>
@@ -471,9 +525,9 @@ function RepairCardView() {
                                 {index + 1}
                               </span>
                               <div className="min-w-0">
-                                <Label className="sr-only" htmlFor={inputId}>
+                                <FieldLabel className="sr-only" htmlFor={inputId}>
                                   Krok naprawy {index + 1}
-                                </Label>
+                                </FieldLabel>
                                 <Input
                                   ref={(element) => {
                                     stepInputRefs.current[index] = element
