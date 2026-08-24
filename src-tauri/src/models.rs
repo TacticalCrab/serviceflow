@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InputDefault {
+    pub key: String,
+    pub value: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TransportDetails {

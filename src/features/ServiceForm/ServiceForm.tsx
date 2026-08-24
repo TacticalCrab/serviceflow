@@ -4,6 +4,7 @@ import { format } from "date-fns"
 import { pl } from "date-fns/locale"
 import { CalendarIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react"
 
+import { DefaultValueInput } from "@/components/DefaultValueInput"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -31,6 +32,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 import { schema, type FormSchema } from "./schema"
+
+const CLIENT_NAME_DEFAULT_KEY = "service-request.client-name"
+const DEVICE_NAME_DEFAULT_KEY = "service-request.device-name"
 
 type ServiceFormProps = {
   className?: string
@@ -219,16 +223,18 @@ function ServiceForm({
                   return (
                     <Field data-invalid={isInvalid}>
                       <FieldLabel htmlFor={field.name}>
-                        Imię <span className="text-destructive">*</span>
+                        Klient <span className="text-destructive">*</span>
                       </FieldLabel>
-                      <Input
+                      <DefaultValueInput
                         id={field.name}
                         name={field.name}
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onChange={(event) => field.handleChange(event.target.value)}
+                        onValueChange={field.handleChange}
                         aria-invalid={isInvalid}
                         autoComplete="given-name"
+                        defaultKey={CLIENT_NAME_DEFAULT_KEY}
+                        defaultValue="Klient"
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>
@@ -772,14 +778,15 @@ function ServiceForm({
                       <FieldLabel htmlFor={field.name}>
                         Nazwa urządzenia <span className="text-destructive">*</span>
                       </FieldLabel>
-                      <Input
+                      <DefaultValueInput
                         id={field.name}
                         name={field.name}
                         value={field.state.value}
                         onBlur={field.handleBlur}
-                        onChange={(event) => field.handleChange(event.target.value)}
+                        onValueChange={field.handleChange}
                         aria-invalid={isInvalid}
-                        placeholder="Np. ekspres do kawy"
+                        defaultKey={DEVICE_NAME_DEFAULT_KEY}
+                        defaultValue="Ekspres do kawy"
                       />
                       {isInvalid && <FieldError errors={field.state.meta.errors} />}
                     </Field>

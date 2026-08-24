@@ -6,7 +6,7 @@ use tauri::State;
 
 use crate::{
     database::Database,
-    models::{DocumentFont, FirmSettings, NewServiceRequest, ServiceRequest},
+    models::{DocumentFont, FirmSettings, InputDefault, NewServiceRequest, ServiceRequest},
 };
 
 const MAX_STAMP_BYTES: usize = 2 * 1024 * 1024;
@@ -248,6 +248,67 @@ fn trimmed_optional(value: Option<String>) -> Option<String> {
     value
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
+}
+
+fn validate_input_default_key(key: &str) -> Result<(), String> {
+    if key.is_empty()
+        || key.len() > 128
+        || !key
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '.' | '-' | '_'))
+    {
+        return Err("Nieprawidłowy klucz wartości domyślnej".into());
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_input_default(
+    key: String,
+    database: State<'_, Database>,
+) -> Result<Option<String>, String> {
+    validate_input_default_key(&key)?;
+    let connection = database
+        .connection
+        .lock()
+        .map_err(|_| "Baza danych jest chwilowo niedostępna".to_string())?;
+
+    connection
+        .query_row("SELECT value FROM input_defaults WHERE key = ?1", [&key], |row| row.get(0))
+        .optional()
+        .map_err(|error| format!("Nie udało się pobrać wartości domyślnej: {error}"))
+}
+
+#[tauri::command]
+pub fn save_input_default(
+    key: String,
+    value: String,
+    database: State<'_, Database>,
+) -> Result<InputDefault, String> {
+    validate_input_default_key(&key)?;
+    if value.len() > 1_000 {
+        return Err("Wartość domyślna może mieć maksymalnie 1000 znaków".into());
+    }
+
+    let connection = database
+        .connection
+        .lock()
+        .map_err(|_| "Baza danych jest chwilowo niedostępna".to_string())?;
+    connection
+        .execute(
+            "
+            INSERT INTO input_defaults (key, value)
+            VALUES (?1, ?2)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+            ",
+            params![&key, &value],
+        )
+        .map_err(|error| format!("Nie udało się zapisać wartości domyślnej: {error}"))?;
+
+    Ok(InputDefault { key, value })
 }
 
 fn validate_stamp_image(mime: &str, data: &[u8]) -> Result<(), String> {

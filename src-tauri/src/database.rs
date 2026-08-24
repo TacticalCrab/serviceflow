@@ -61,6 +61,12 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_service_requests_status
                 ON service_requests(status);
 
+            CREATE TABLE IF NOT EXISTS input_defaults (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+            );
+
             CREATE TABLE IF NOT EXISTS firm_settings (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
                 company_name TEXT NOT NULL,

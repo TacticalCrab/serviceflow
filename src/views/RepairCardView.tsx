@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { DefaultValueInput } from "@/components/DefaultValueInput"
 import {
   Card,
   CardContent,
@@ -54,6 +55,8 @@ const EMPTY_FIRM_SETTINGS: FirmSettings = {
   companyName: "",
   documentFont: "times_new_roman",
 }
+const DEFAULT_DEVICE_NAME = "Ekspres do kawy"
+const DEVICE_NAME_DEFAULT_KEY = "repair-card.device-name"
 
 function FormField({
   id,
@@ -445,12 +448,13 @@ function RepairCardView() {
                 <div className="border-t pt-5">
                   <h2 className="mb-4 text-sm font-semibold">Urządzenie</h2>
                   <div className="grid gap-4">
-                    <FormField id="repair-card-device-name" label="Nazwa sprzętu">
-                      <Input
+                  <FormField id="repair-card-device-name" label="Nazwa sprzętu">
+                      <DefaultValueInput
                         id="repair-card-device-name"
                         value={data.deviceName}
-                        onChange={(event) => updateField("deviceName", event.target.value)}
-                        placeholder="np. Ekspres do kawy"
+                        onValueChange={(value) => updateField("deviceName", value)}
+                        defaultKey={DEVICE_NAME_DEFAULT_KEY}
+                        defaultValue={DEFAULT_DEVICE_NAME}
                       />
                     </FormField>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
