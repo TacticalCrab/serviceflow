@@ -121,7 +121,7 @@ function DefaultValueInput({
       )}
       {editorOpen && (
         <Card
-          className="fixed z-[100] w-80 shadow-lg"
+          className="fixed z-100 w-80 shadow-lg"
           style={{ left: editorPosition.x, top: editorPosition.y }}
           onPointerDown={(event) => event.stopPropagation()}
         >
