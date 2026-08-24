@@ -1190,17 +1190,25 @@ function ServiceForm({
                       {(field.state.value ?? []).map((_, index) => (
                         <div
                           key={index}
-                          className="grid grid-cols-1 items-start gap-3 rounded-lg bg-muted/50 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+                          className="flex flex-wrap items-end gap-2.5 rounded-lg bg-muted/50 p-2.5"
                         >
                           <form.Field name={`additionalCosts[${index}].description`}>
                             {(descriptionField) => {
                               const isInvalid =
                                 descriptionField.state.meta.isTouched &&
                                 !descriptionField.state.meta.isValid
+                              const inputWidth = Math.min(
+                                Math.max((descriptionField.state.value?.length ?? 0) * 10 + 48, 220),
+                                520
+                              )
 
                               return (
-                                <Field data-invalid={isInvalid}>
-                                  <FieldLabel htmlFor={descriptionField.name}>Opis</FieldLabel>
+                                <Field
+                                  data-invalid={isInvalid}
+                                  className="w-full shrink-0 sm:w-auto"
+                                  style={{ width: inputWidth }}
+                                >
+                                  <FieldLabel className="sr-only" htmlFor={descriptionField.name}>Opis</FieldLabel>
                                   <Input
                                     id={descriptionField.name}
                                     name={descriptionField.name}
@@ -1222,7 +1230,7 @@ function ServiceForm({
                                       })
                                     }}
                                     aria-invalid={isInvalid}
-                                    placeholder="Np. wymiana uszczelki"
+                                    placeholder="Opis wydatku, np. wymiana uszczelki"
                                   />
                                   {isInvalid && (
                                     <FieldError errors={descriptionField.state.meta.errors} />
@@ -1238,8 +1246,8 @@ function ServiceForm({
                                 priceField.state.meta.isTouched && !priceField.state.meta.isValid
 
                               return (
-                                <Field data-invalid={isInvalid} className="sm:col-start-1 sm:row-start-2">
-                                  <FieldLabel htmlFor={priceField.name}>Cena</FieldLabel>
+                                <Field data-invalid={isInvalid} className="w-36 shrink-0">
+                                  <FieldLabel className="sr-only" htmlFor={priceField.name}>Cena</FieldLabel>
                                   <div className="relative">
                                     <Input
                                       id={priceField.name}
@@ -1281,7 +1289,7 @@ function ServiceForm({
                             }}
                           </form.Field>
 
-                          <div className="space-y-2 sm:col-start-1 sm:row-start-3">
+                          <div className="order-2 basis-full self-center whitespace-nowrap">
                             <form.Field name={`additionalCosts[${index}].includeInFinalPrice`}>
                               {(includedField) => (
                                 <Field orientation="horizontal">
@@ -1303,7 +1311,7 @@ function ServiceForm({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="sm:col-start-2 sm:row-span-3 sm:mt-0"
+                            className="order-1 self-center"
                             onClick={() => field.removeValue(index)}
                             aria-label={`Usuń dodatkowy koszt ${index + 1}`}
                           >
