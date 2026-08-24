@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation } from "react-router"
-import { format } from "date-fns"
+import { format, isValid } from "date-fns"
 import { pl } from "date-fns/locale"
 import {
   CheckCircle2Icon,
@@ -173,24 +173,48 @@ function formatCost(value: number | undefined) {
   }).format(value)
 }
 
-function formatTransport(
+function transportDetails(
   request: ServiceRequest,
   direction: "checkIn" | "checkOut"
 ) {
   const transport = request.client.preferences?.[direction]
-  if (!transport?.method) return "Nie ustalono"
+  if (!transport?.method) return { label: "Nie ustalono" }
 
   const label =
     transport.method === "servicePickup"
-      ? "Odbiór przez serwis"
+      ? "Odbiór serwisu"
       : transport.method === "serviceDelivery"
-        ? "Dostawa przez serwis"
+        ? "Dostawa serwisu"
         : transport.method === "clientDropOff"
           ? "Klient przywozi"
           : "Klient odbiera"
-  const date = transport.date ? formatCreatedAt(transport.date) : undefined
+  const date = transport.date ? new Date(transport.date) : undefined
 
-  return [label, date].filter(Boolean).join(" · ")
+  return {
+    label,
+    date: date && isValid(date) ? date : undefined,
+  }
+}
+
+function TransportCell({
+  request,
+  direction,
+}: {
+  request: ServiceRequest
+  direction: "checkIn" | "checkOut"
+}) {
+  const transport = transportDetails(request, direction)
+
+  return (
+    <div className="min-w-36 leading-snug">
+      <div className="font-medium text-foreground">{transport.label}</div>
+      {transport.date && (
+        <div className="mt-1 text-xs text-muted-foreground">
+          {format(transport.date, "d MMM yyyy", { locale: pl })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function additionalCostsTotal(request: ServiceRequest) {
@@ -231,9 +255,9 @@ function sortableValue(
     case "status":
       return statusOrder.indexOf(request.status)
     case "checkIn":
-      return formatTransport(request, "checkIn")
+      return transportDetails(request, "checkIn").date?.getTime() ?? Number.MAX_SAFE_INTEGER
     case "checkOut":
-      return formatTransport(request, "checkOut")
+      return transportDetails(request, "checkOut").date?.getTime() ?? Number.MAX_SAFE_INTEGER
     case "createdAt":
       return request.createdAt
     case "statusChangedAt":
@@ -736,8 +760,8 @@ function RepairsView() {
                         {formatCost(finalPrice(request.costEstimate, request.additionalCosts))}
                       </td>}
                       {visibleColumns.additionalCosts && <td className="px-4 py-3 tabular-nums">{additionalCostsTotal(request)}</td>}
-                      {visibleColumns.checkIn && <td className="max-w-56 px-4 py-3 text-muted-foreground">{formatTransport(request, "checkIn")}</td>}
-                      {visibleColumns.checkOut && <td className="max-w-56 px-4 py-3 text-muted-foreground">{formatTransport(request, "checkOut")}</td>}
+                      {visibleColumns.checkIn && <td className="px-4 py-3"><TransportCell request={request} direction="checkIn" /></td>}
+                      {visibleColumns.checkOut && <td className="px-4 py-3"><TransportCell request={request} direction="checkOut" /></td>}
                       {visibleColumns.createdAt && <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {formatCreatedAt(request.createdAt)}
                       </td>}
