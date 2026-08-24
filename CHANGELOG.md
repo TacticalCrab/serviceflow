@@ -19,3 +19,4 @@ Second version after feedback
 - Feature: notes for request & client notes
 - Feature: producer names switch and configuration
 - Feature: service steps switch and configuration
+- Feature: font size configuration

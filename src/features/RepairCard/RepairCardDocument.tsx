@@ -44,7 +44,10 @@ function RepairCardDocument({ data, settings }: RepairCardDocumentProps) {
   return (
     <article
       className="repair-card-document relative mx-auto aspect-[210/297] w-full max-w-[210mm] overflow-hidden bg-white text-black shadow-xl print:m-0 print:h-[297mm] print:w-[210mm] print:max-w-none print:shadow-none [container-type:inline-size]"
-      style={{ fontFamily: getDocumentFontFamily(settings.documentFont) }}
+      style={{
+        fontFamily: getDocumentFontFamily(settings.documentFont),
+        fontSize: "16px",
+      }}
       data-repair-card-document
       aria-label="Podgląd karty naprawy"
     >

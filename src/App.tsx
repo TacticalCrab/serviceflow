@@ -8,6 +8,7 @@ import {
 
 import "./App.css"
 import { Navbar } from "@/components/Navbar"
+import { useAppFontSize } from "@/features/DisplaySettings/fontSize"
 import { HomeView } from "@/views/HomeView"
 import { FirmSettingsView } from "@/views/FirmSettingsView"
 import { ConfigurationView } from "@/views/ConfigurationView"
@@ -17,6 +18,7 @@ import { RepairsView } from "@/views/RepairsView"
 import { RequestDetailsView } from "@/views/RequestDetailsView"
 
 function AppLayout() {
+  useAppFontSize()
   const location = useLocation()
   const isRepairsList = location.pathname === "/naprawy"
 

@@ -37,6 +37,19 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  appFontSizeOptions,
+  saveAppFontSize,
+  useAppFontSize,
+} from "@/features/DisplaySettings/fontSize"
+import {
   normalizeDeviceProducers,
   saveDeviceProducers,
   useDeviceProducers,
@@ -90,14 +103,17 @@ function ConfigurationView() {
   const configuredOrder = useStatusOrder()
   const configuredProducers = useDeviceProducers()
   const configuredSteps = useServiceSteps()
+  const configuredFontSize = useAppFontSize()
   const [order, setOrder] = useState(configuredOrder)
   const [producers, setProducers] = useState(configuredProducers)
   const [steps, setSteps] = useState(configuredSteps)
   const [newProducer, setNewProducer] = useState("")
   const [newStep, setNewStep] = useState("")
+  const [fontSize, setFontSize] = useState(configuredFontSize)
   const [saving, setSaving] = useState(false)
   const [savingProducers, setSavingProducers] = useState(false)
   const [savingSteps, setSavingSteps] = useState(false)
+  const [savingFontSize, setSavingFontSize] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const statusDirty = order.some((status, index) => status !== configuredOrder[index])
@@ -107,6 +123,7 @@ function ConfigurationView() {
   const stepsDirty =
     JSON.stringify(normalizeServiceSteps(steps)) !==
     JSON.stringify(normalizeServiceSteps(configuredSteps))
+  const fontSizeDirty = fontSize !== configuredFontSize
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -123,6 +140,10 @@ function ConfigurationView() {
   useEffect(() => {
     setSteps(configuredSteps)
   }, [configuredSteps])
+
+  useEffect(() => {
+    setFontSize(configuredFontSize)
+  }, [configuredFontSize])
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
@@ -214,6 +235,26 @@ function ConfigurationView() {
     }
   }
 
+  async function handleSaveFontSize() {
+    setSavingFontSize(true)
+    setError(null)
+    setSaved(false)
+
+    try {
+      const savedFontSize = await saveAppFontSize(fontSize)
+      setFontSize(savedFontSize)
+      setSaved(true)
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Nie udało się zapisać rozmiaru tekstu."
+      )
+    } finally {
+      setSavingFontSize(false)
+    }
+  }
+
   return (
     <section className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -241,6 +282,49 @@ function ConfigurationView() {
           {error}
         </div>
       )}
+
+      <Card className="max-w-xl">
+        <CardHeader className="p-4 pb-0">
+          <CardTitle className="text-base">Rozmiar tekstu aplikacji</CardTitle>
+          <CardDescription>
+            Zmień rozmiar tekstu we wszystkich widokach aplikacji. Nie wpływa to na wygląd ani czcionkę karty naprawy.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 p-4">
+          <Select
+            value={String(fontSize)}
+            onValueChange={(value) => {
+              setSaved(false)
+              setFontSize(Number(value))
+            }}
+          >
+            <SelectTrigger className="h-10 w-full sm:max-w-md" aria-label="Rozmiar tekstu aplikacji">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start" alignItemWithTrigger={false}>
+              <SelectGroup>
+                {appFontSizeOptions.map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option === 16 ? `${option} px (domyślny)` : `${option} px`}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          {fontSizeDirty && (
+            <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <CircleAlertIcon className="size-4 shrink-0" />
+              Zmieniono rozmiar tekstu. Zapisz tę sekcję.
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button type="button" size="sm" onClick={() => void handleSaveFontSize()} disabled={savingFontSize || !fontSizeDirty}>
+              {savingFontSize && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
+              {savingFontSize ? "Zapisywanie…" : "Zapisz rozmiar"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="max-w-xl">
         <CardHeader className="p-4 pb-0">
