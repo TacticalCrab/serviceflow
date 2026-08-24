@@ -221,8 +221,8 @@ function ServiceForm({
           <CardDescription>{description}</CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          <FieldSet className="rounded-lg border p-4">
+        <CardContent className="flex flex-col gap-6">
+          <FieldSet className="order-5 rounded-lg border p-4">
             <FieldLegend>Dane zlecenia</FieldLegend>
             <form.Field name="requestedCreatedAt">
               {(field) => {
@@ -269,7 +269,7 @@ function ServiceForm({
             </form.Field>
           </FieldSet>
 
-          <FieldSet className="rounded-lg border p-4">
+          <FieldSet className="order-4 rounded-lg border p-4">
             <FieldLegend>Dane klienta</FieldLegend>
             <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <form.Field name="client.name">
@@ -822,7 +822,7 @@ function ServiceForm({
             </FieldSet>
           </FieldSet>
 
-          <FieldSet className="rounded-lg border p-4">
+          <FieldSet className="order-1 rounded-lg border p-4">
             <FieldLegend>Urządzenie</FieldLegend>
             <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <form.Field name="device.name">
@@ -944,7 +944,7 @@ function ServiceForm({
             </FieldGroup>
           </FieldSet>
 
-          <FieldSet className="rounded-lg border p-4">
+          <FieldSet className="order-2 rounded-lg border p-4">
             <FieldLegend>Plan naprawy</FieldLegend>
             <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <form.Field name="repairTime">
@@ -1070,7 +1070,7 @@ function ServiceForm({
             </form.Field>
           </FieldSet>
 
-          <FieldSet className="rounded-lg border p-4">
+          <FieldSet className="order-3 rounded-lg border p-4">
             <FieldLegend>Dodatkowe koszty</FieldLegend>
             <form.Field name="additionalCosts" mode="array">
               {(field) => (
