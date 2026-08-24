@@ -483,6 +483,38 @@ function ServiceForm({
 
             <FieldSet>
               <FieldLegend variant="label">Preferencje klienta</FieldLegend>
+              <FieldGroup className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <form.Field name="client.preferences.repairCard">
+                  {(field) => (
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id={field.name}
+                        name={field.name}
+                        checked={field.state.value ?? false}
+                        onCheckedChange={field.handleChange}
+                        onBlur={field.handleBlur}
+                      />
+                      <FieldLabel htmlFor={field.name}>Karta naprawy</FieldLabel>
+                    </Field>
+                  )}
+                </form.Field>
+
+                <form.Field name="client.preferences.invoice">
+                  {(field) => (
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id={field.name}
+                        name={field.name}
+                        checked={field.state.value ?? false}
+                        onCheckedChange={field.handleChange}
+                        onBlur={field.handleBlur}
+                      />
+                      <FieldLabel htmlFor={field.name}>Faktura</FieldLabel>
+                    </Field>
+                  )}
+                </form.Field>
+              </FieldGroup>
+
               <FieldGroup className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <FieldSet className="rounded-lg border bg-muted/30 p-3">
                   <FieldLegend variant="label">Przyjęcie sprzętu do serwisu</FieldLegend>
@@ -879,37 +911,6 @@ function ServiceForm({
                 </FieldSet>
               </FieldGroup>
 
-              <FieldGroup className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <form.Field name="client.preferences.repairCard">
-                  {(field) => (
-                    <Field orientation="horizontal">
-                      <Checkbox
-                        id={field.name}
-                        name={field.name}
-                        checked={field.state.value ?? false}
-                        onCheckedChange={field.handleChange}
-                        onBlur={field.handleBlur}
-                      />
-                      <FieldLabel htmlFor={field.name}>Karta naprawy</FieldLabel>
-                    </Field>
-                  )}
-                </form.Field>
-
-                <form.Field name="client.preferences.invoice">
-                  {(field) => (
-                    <Field orientation="horizontal">
-                      <Checkbox
-                        id={field.name}
-                        name={field.name}
-                        checked={field.state.value ?? false}
-                        onCheckedChange={field.handleChange}
-                        onBlur={field.handleBlur}
-                      />
-                      <FieldLabel htmlFor={field.name}>Faktura</FieldLabel>
-                    </Field>
-                  )}
-                </form.Field>
-              </FieldGroup>
             </FieldSet>
           </FieldSet>
 

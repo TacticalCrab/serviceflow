@@ -462,7 +462,7 @@ function HomeView() {
           value={statValue(stats.inProgress)}
           description="Zlecenia przyjęte w wybranym okresie"
           icon={WrenchIcon}
-          to="/naprawy?preset=compact"
+          to="/naprawy?preset=workshop"
         />
         <StatCard
           title="Naprawione ekspresy"

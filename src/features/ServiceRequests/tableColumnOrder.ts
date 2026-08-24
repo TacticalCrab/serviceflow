@@ -6,6 +6,7 @@ const REPAIRS_TABLE_COLUMNS = [
   ["serialNumber", "Numer seryjny"], ["defect", "Opis usterki"],
   ["repairTime", "Czas naprawy"], ["estimate", "Kwota końcowa"],
   ["additionalCosts", "Wydatki"], ["profit", "Zysk"], ["checkIn", "Przyjęcie"], ["checkOut", "Zwrot"],
+  ["repairCard", "Karta naprawy"], ["invoice", "Faktura"],
   ["createdAt", "Utworzono"], ["statusChangedAt", "Zmiana statusu"],
 ] as const
 

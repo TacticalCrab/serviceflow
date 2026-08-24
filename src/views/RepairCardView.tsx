@@ -18,7 +18,6 @@ import {
   PrinterIcon,
   SettingsIcon,
   Trash2Icon,
-  WandSparklesIcon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -281,6 +280,19 @@ function RepairCardView() {
     return () => cancelAnimationFrame(frame)
   }, [data.performedActions.length])
 
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      const amountInWords = amountToPolishWords(data.amount)
+      setData((current) =>
+        current.amount === data.amount && current.amountInWords !== amountInWords
+          ? { ...current, amountInWords }
+          : current
+      )
+    }, 400)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [data.amount])
+
   function updateField<Key extends keyof RepairCardData>(
     field: Key,
     value: RepairCardData[Key]
@@ -333,8 +345,6 @@ function RepairCardView() {
     !settings.postalCode?.trim() ||
     !settings.city?.trim()
   const missingStamp = !settings.stampDataUrl
-  const generatedAmountInWords = amountToPolishWords(data.amount)
-
   return (
     <section className="repair-card-view space-y-6 print:block" data-repair-card-view>
       <header className="repair-card-screen-only flex flex-col gap-4 print:hidden sm:flex-row sm:items-end sm:justify-between">
@@ -614,29 +624,15 @@ function RepairCardView() {
                     label="Kwota słownie"
                     description="Możesz uzupełnić ją automatycznie z podanej kwoty, a potem dowolnie zmienić."
                   >
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                      <Input
-                        id="repair-card-amount-words"
-                        aria-describedby="repair-card-amount-words-description"
-                        value={data.amountInWords}
-                        onChange={(event) =>
-                          updateField("amountInWords", event.target.value)
-                        }
-                        placeholder="np. Trzysta trzydzieści złotych"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={!generatedAmountInWords}
-                        onClick={() =>
-                          updateField("amountInWords", generatedAmountInWords)
-                        }
-                        title="Uzupełnij kwotę słownie"
-                        aria-label="Uzupełnij kwotę słownie"
-                      >
-                        <WandSparklesIcon />
-                      </Button>
-                    </div>
+                    <Input
+                      id="repair-card-amount-words"
+                      aria-describedby="repair-card-amount-words-description"
+                      value={data.amountInWords}
+                      onChange={(event) =>
+                        updateField("amountInWords", event.target.value)
+                      }
+                      placeholder="np. Trzysta trzydzieści złotych"
+                    />
                   </FormField>
                 </div>
               </form>

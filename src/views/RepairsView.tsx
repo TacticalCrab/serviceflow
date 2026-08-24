@@ -86,6 +86,8 @@ type TableColumnId =
   | "status"
   | "checkIn"
   | "checkOut"
+  | "repairCard"
+  | "invoice"
   | "createdAt"
   | "statusChangedAt"
 type SortColumn = "id" | TableColumnId
@@ -106,6 +108,8 @@ const tableColumnOptions: Array<{ id: TableColumnId; label: string }> = [
   { id: "status", label: "Status" },
   { id: "checkIn", label: "Przyjęcie sprzętu" },
   { id: "checkOut", label: "Zwrot sprzętu" },
+  { id: "repairCard", label: "Karta naprawy" },
+  { id: "invoice", label: "Faktura" },
   { id: "createdAt", label: "Data utworzenia" },
   { id: "statusChangedAt", label: "Zmiana statusu" },
 ]
@@ -130,6 +134,8 @@ const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   status: true,
   checkIn: true,
   checkOut: true,
+  repairCard: false,
+  invoice: false,
   createdAt: false,
   statusChangedAt: false,
 }
@@ -140,7 +146,7 @@ const viewPresetColumns: Record<ViewPreset, TableColumnId[]> = {
   financial: ["status", "customer", "device", "estimate", "additionalCosts", "profit"],
   intake: ["status", "customer", "phone", "device", "checkIn"],
   workshop: ["status", "customer", "device", "defect", "repairTime", "createdAt"],
-  returns: ["status", "customer", "phone", "device", "checkOut"],
+  returns: ["status", "customer", "phone", "device", "checkOut", "repairCard", "invoice"],
 }
 
 const viewPresetStatus: Record<ViewPreset, StatusFilter> = {
@@ -330,6 +336,10 @@ function sortableValue(
       return transportDetails(request, "checkIn").date?.getTime() ?? Number.MAX_SAFE_INTEGER
     case "checkOut":
       return transportDetails(request, "checkOut").date?.getTime() ?? Number.MAX_SAFE_INTEGER
+    case "repairCard":
+      return request.client.preferences?.repairCard ? 1 : 0
+    case "invoice":
+      return request.client.preferences?.invoice ? 1 : 0
     case "createdAt":
       return request.createdAt
     case "statusChangedAt":
@@ -426,6 +436,8 @@ function requestMatchesSearch(request: ServiceRequest, query: string) {
       : "klient odbiera",
     searchableDate(preferences?.checkIn?.date),
     searchableDate(preferences?.checkOut?.date),
+    preferences?.repairCard ? "karta naprawy" : "",
+    preferences?.invoice ? "faktura" : "",
   ]
   const searchIndex = normalizeSearchValue(searchableValues.join(" "))
 
@@ -665,6 +677,8 @@ function RepairsView() {
       }
       case "checkIn": return <td key={column} className="px-4 py-3"><TransportCell request={request} direction="checkIn" /></td>
       case "checkOut": return <td key={column} className="px-4 py-3"><TransportCell request={request} direction="checkOut" /></td>
+      case "repairCard": return <td key={column} className="px-4 py-3">{request.client.preferences?.repairCard ? "Tak" : "—"}</td>
+      case "invoice": return <td key={column} className="px-4 py-3">{request.client.preferences?.invoice ? "Tak" : "—"}</td>
       case "createdAt": return <td key={column} className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCreatedAt(request.createdAt)}</td>
       case "statusChangedAt": return <td key={column} className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCreatedAt(request.statusChangedAt)}</td>
     }
