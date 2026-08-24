@@ -5,6 +5,7 @@ import { pl } from "date-fns/locale"
 import { CalendarIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react"
 
 import { DefaultValueInput } from "@/components/DefaultValueInput"
+import { DeviceProducerInput } from "@/components/DeviceProducerInput"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -909,14 +910,12 @@ function ServiceForm({
                   return (
                     <Field data-invalid={isInvalid}>
                       <FieldLabel htmlFor={field.name}>Producent</FieldLabel>
-                      <Input
+                      <DeviceProducerInput
                         id={field.name}
                         name={field.name}
                         value={field.state.value ?? ""}
                         onBlur={field.handleBlur}
-                        onChange={(event) =>
-                          field.handleChange(optionalText(event.target.value))
-                        }
+                        onValueChange={(value) => field.handleChange(optionalText(value))}
                         aria-invalid={isInvalid}
                         placeholder="Np. Hendi"
                       />

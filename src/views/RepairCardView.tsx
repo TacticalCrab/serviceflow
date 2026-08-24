@@ -23,6 +23,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { DefaultValueInput } from "@/components/DefaultValueInput"
+import { DeviceProducerInput } from "@/components/DeviceProducerInput"
 import {
   Card,
   CardContent,
@@ -486,12 +487,10 @@ function RepairCardView() {
                     </FormField>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                       <FormField id="repair-card-manufacturer" label="Producent">
-                        <Input
+                        <DeviceProducerInput
                           id="repair-card-manufacturer"
                           value={data.manufacturer}
-                          onChange={(event) =>
-                            updateField("manufacturer", event.target.value)
-                          }
+                          onValueChange={(value) => updateField("manufacturer", value)}
                           placeholder="np. HENDI"
                         />
                       </FormField>

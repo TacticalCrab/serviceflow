@@ -22,7 +22,9 @@ import {
   CircleAlertIcon,
   GripVerticalIcon,
   LoaderCircleIcon,
+  PlusIcon,
   Settings2Icon,
+  Trash2Icon,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -33,6 +35,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import {
+  normalizeDeviceProducers,
+  saveDeviceProducers,
+  useDeviceProducers,
+} from "@/features/DeviceProducers/producers"
 import type { ServiceStatus } from "@/features/ServiceRequests/api"
 import {
   serviceStatusDotClasses,
@@ -75,10 +83,18 @@ function SortableStatus({ status, index }: { status: ServiceStatus; index: numbe
 
 function ConfigurationView() {
   const configuredOrder = useStatusOrder()
+  const configuredProducers = useDeviceProducers()
   const [order, setOrder] = useState(configuredOrder)
+  const [producers, setProducers] = useState(configuredProducers)
+  const [newProducer, setNewProducer] = useState("")
   const [saving, setSaving] = useState(false)
+  const [savingProducers, setSavingProducers] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const statusDirty = order.some((status, index) => status !== configuredOrder[index])
+  const producersDirty =
+    JSON.stringify(normalizeDeviceProducers(producers)) !==
+    JSON.stringify(normalizeDeviceProducers(configuredProducers))
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -87,6 +103,10 @@ function ConfigurationView() {
   useEffect(() => {
     setOrder(configuredOrder)
   }, [configuredOrder])
+
+  useEffect(() => {
+    setProducers(configuredProducers)
+  }, [configuredProducers])
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
@@ -120,6 +140,35 @@ function ConfigurationView() {
     }
   }
 
+  function addProducer() {
+    const producer = newProducer.trim()
+    if (!producer) return
+
+    setSaved(false)
+    setProducers((current) => [...current, producer])
+    setNewProducer("")
+  }
+
+  async function handleSaveProducers() {
+    setSavingProducers(true)
+    setError(null)
+    setSaved(false)
+
+    try {
+      const savedProducers = await saveDeviceProducers(producers)
+      setProducers(savedProducers)
+      setSaved(true)
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Nie udało się zapisać producentów urządzeń."
+      )
+    } finally {
+      setSavingProducers(false)
+    }
+  }
+
   return (
     <section className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -138,7 +187,7 @@ function ConfigurationView() {
       {saved && (
         <div className="flex items-center gap-3 rounded-lg border border-emerald-600/25 bg-emerald-500/10 p-3 text-sm text-emerald-800 dark:text-emerald-300">
           <CheckCircle2Icon className="size-4 shrink-0" />
-          Kolejność statusów została zapisana.
+          Konfiguracja została zapisana.
         </div>
       )}
       {error && (
@@ -165,10 +214,91 @@ function ConfigurationView() {
               </ol>
             </SortableContext>
           </DndContext>
+          {statusDirty && (
+            <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <CircleAlertIcon className="size-4 shrink-0" />
+              Zmieniono kolejność statusów. Zapisz tę sekcję.
+            </div>
+          )}
           <div className="flex justify-end">
-            <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
+            <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving || !statusDirty}>
               {saving && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
               {saving ? "Zapisywanie…" : "Zapisz kolejność"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-xl">
+        <CardHeader className="p-4 pb-0">
+          <CardTitle className="text-base">Producenci urządzeń</CardTitle>
+          <CardDescription>
+            Lista jest dostępna w polu producenta podczas tworzenia i edycji zlecenia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex gap-2">
+            <Input
+              value={newProducer}
+              onChange={(event) => setNewProducer(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return
+                event.preventDefault()
+                addProducer()
+              }}
+              placeholder="Np. Nivona"
+              aria-label="Nowy producent"
+            />
+            <Button type="button" variant="outline" size="icon" onClick={addProducer} aria-label="Dodaj producenta">
+              <PlusIcon />
+            </Button>
+          </div>
+          <div className="divide-y overflow-hidden rounded-lg border">
+            {producers.length ? (
+              producers.map((producer, index) => (
+                <div key={`${producer}-${index}`} className="flex items-center gap-2 p-2">
+                  <Input
+                    value={producer}
+                    onChange={(event) => {
+                      setSaved(false)
+                      setProducers((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index ? event.target.value : item
+                        )
+                      )
+                    }}
+                    aria-label={`Producent ${index + 1}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      setSaved(false)
+                      setProducers((current) =>
+                        current.filter((_, itemIndex) => itemIndex !== index)
+                      )
+                    }}
+                    aria-label={`Usuń producenta ${producer}`}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <p className="p-3 text-sm text-muted-foreground">Nie dodano producentów.</p>
+            )}
+          </div>
+          {producersDirty && (
+            <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <CircleAlertIcon className="size-4 shrink-0" />
+              Zmieniono producentów urządzeń. Zapisz tę sekcję.
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button type="button" size="sm" onClick={() => void handleSaveProducers()} disabled={savingProducers || !producersDirty}>
+              {savingProducers && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
+              {savingProducers ? "Zapisywanie…" : "Zapisz producentów"}
             </Button>
           </div>
         </CardContent>
