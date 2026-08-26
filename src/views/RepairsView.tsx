@@ -158,6 +158,18 @@ const viewPresetStatus: Record<ViewPreset, StatusFilter> = {
   returns: "ready_for_return",
 }
 
+const viewPresetSort: Record<
+  ViewPreset,
+  { column: SortColumn; direction: Exclude<SortDirection, null> }
+> = {
+  compact: { column: "id", direction: "desc" },
+  schedule: { column: "checkIn", direction: "asc" },
+  financial: { column: "estimate", direction: "desc" },
+  intake: { column: "checkIn", direction: "asc" },
+  workshop: { column: "createdAt", direction: "asc" },
+  returns: { column: "checkOut", direction: "asc" },
+}
+
 function isViewPreset(value: unknown): value is ViewPreset {
   return value === "compact" || value === "schedule" || value === "financial" || value === "intake" || value === "workshop" || value === "returns"
 }
@@ -455,9 +467,14 @@ function RepairsView() {
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
-  const [savedSort] = useState(loadTableSort)
-  const [sortColumn, setSortColumn] = useState<SortColumn | null>(savedSort.column)
-  const [sortDirection, setSortDirection] = useState<SortDirection>(savedSort.direction)
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(() => {
+    const preset = loadViewPreset()
+    return preset ? viewPresetSort[preset].column : loadTableSort().column
+  })
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
+    const preset = loadViewPreset()
+    return preset ? viewPresetSort[preset].direction : loadTableSort().direction
+  })
   const [temporaryPreset, setTemporaryPreset] = useState<ViewPreset | null>(loadViewPreset)
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const preset = loadViewPreset()
@@ -491,6 +508,8 @@ function RepairsView() {
       setTemporaryPreset(requestedPreset)
       setVisibleColumns(columnVisibilityForPreset(requestedPreset))
       setStatusFilter(viewPresetStatus[requestedPreset])
+      setSortColumn(viewPresetSort[requestedPreset].column)
+      setSortDirection(viewPresetSort[requestedPreset].direction)
     }
   }, [location.search])
 
@@ -634,6 +653,8 @@ function RepairsView() {
     window.localStorage.setItem(VIEW_PRESET_STORAGE_KEY, preset)
     setVisibleColumns(columnVisibilityForPreset(preset))
     setStatusFilter(viewPresetStatus[preset])
+    setSortColumn(viewPresetSort[preset].column)
+    setSortDirection(viewPresetSort[preset].direction)
   }
 
   function restoreSavedView() {
@@ -644,6 +665,17 @@ function RepairsView() {
     const savedViewSort = loadTableSort()
     setSortColumn(savedViewSort.column)
     setSortDirection(savedViewSort.direction)
+  }
+
+  function persistPresetView() {
+    window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(visibleColumns))
+    window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, statusFilter)
+    window.localStorage.setItem(
+      TABLE_SORT_STORAGE_KEY,
+      JSON.stringify({ column: sortColumn, direction: sortDirection })
+    )
+    window.localStorage.removeItem(VIEW_PRESET_STORAGE_KEY)
+    setTemporaryPreset(null)
   }
 
   function cycleSort(column: SortColumn) {
@@ -719,14 +751,19 @@ function RepairsView() {
 
       <Card className="bg-muted/20">
         <CardContent className="space-y-4 pt-6">
-          <div className="flex flex-wrap justify-end gap-1" aria-label="Presety widoku tabeli">
+          <div className="flex flex-wrap justify-end gap-3">
+            <div className="flex flex-wrap gap-1" aria-label="Presety widoku tabeli">
             <Button type="button" variant="outline" size="icon" className={cn("text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 dark:text-violet-400", temporaryPreset === "compact" && "border-violet-500/50 bg-violet-500/15")} onClick={() => applyViewPreset("compact")} aria-label="Kompaktowy widok" title="Kompaktowy widok"><SlidersHorizontalIcon /></Button>
             <Button type="button" variant="outline" size="icon" className={cn("text-sky-600 hover:bg-sky-500/10 hover:text-sky-700 dark:text-sky-400", temporaryPreset === "schedule" && "border-sky-500/50 bg-sky-500/15")} onClick={() => applyViewPreset("schedule")} aria-label="Widok terminów" title="Widok terminów"><CalendarDaysIcon /></Button>
             <Button type="button" variant="outline" size="icon" className={cn("text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400", temporaryPreset === "financial" && "border-emerald-500/50 bg-emerald-500/15")} onClick={() => applyViewPreset("financial")} aria-label="Widok finansowy" title="Widok finansowy"><WalletCardsIcon /></Button>
             <Button type="button" variant="outline" size="icon" className={cn("text-slate-600 hover:bg-slate-500/10 hover:text-slate-700 dark:text-slate-300", temporaryPreset === "intake" && "border-slate-500/50 bg-slate-500/15")} onClick={() => applyViewPreset("intake")} aria-label="Widok przyjęć" title="Widok przyjęć"><PackageCheckIcon /></Button>
             <Button type="button" variant="outline" size="icon" className={cn("text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400", temporaryPreset === "workshop" && "border-red-500/50 bg-red-500/15")} onClick={() => applyViewPreset("workshop")} aria-label="Widok warsztatu" title="Widok warsztatu"><WrenchIcon /></Button>
             <Button type="button" variant="outline" size="icon" className={cn("text-cyan-600 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-cyan-400", temporaryPreset === "returns" && "border-cyan-500/50 bg-cyan-500/15")} onClick={() => applyViewPreset("returns")} aria-label="Widok wydań" title="Widok wydań"><TruckIcon /></Button>
-            <Button type="button" variant="outline" size="icon" className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400" onClick={restoreSavedView} aria-label="Przywróć zapisany widok" title="Przywróć zapisany widok"><SaveIcon /></Button>
+            </div>
+            <div className="flex gap-1" aria-label="Akcje presetów">
+              {temporaryPreset && <Button type="button" variant="outline" size="icon" className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400" onClick={persistPresetView} aria-label="Zastosuj preset na stałe" title="Zastosuj preset na stałe"><SaveIcon /></Button>}
+            <Button type="button" variant="outline" size="icon" className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400" onClick={restoreSavedView} aria-label="Przywróć zapisany widok" title="Przywróć zapisany widok"><RotateCcwIcon /></Button>
+            </div>
           </div>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-1.5">
