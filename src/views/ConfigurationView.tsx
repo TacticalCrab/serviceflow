@@ -25,7 +25,6 @@ import {
   GripVerticalIcon,
   LoaderCircleIcon,
   PlusIcon,
-  Settings2Icon,
   Trash2Icon,
 } from "lucide-react"
 
@@ -601,13 +600,6 @@ function ConfigurationView() {
               {savingSteps ? "Zapisywanie…" : "Zapisz kroki"}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="order-5 border-dashed bg-muted/20 xl:col-span-2">
-        <CardContent className="flex items-start gap-3 pt-6 text-sm text-muted-foreground">
-          <Settings2Icon className="mt-0.5 size-4 shrink-0" />
-          Kolejne ustawienia operacyjne będą dostępne w tym widoku.
         </CardContent>
       </Card>
 
