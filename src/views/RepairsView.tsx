@@ -16,7 +16,6 @@ import {
   PackageCheckIcon,
   PencilIcon,
   RotateCcwIcon,
-  SaveIcon,
   SearchIcon,
   SlidersHorizontalIcon,
   TruckIcon,
@@ -118,6 +117,7 @@ const COLUMN_VISIBILITY_STORAGE_KEY = "cafe-service.repairs-table-columns-v2"
 const STATUS_FILTER_STORAGE_KEY = "cafe-service.repairs-status-filter"
 const TABLE_SORT_STORAGE_KEY = "cafe-service.repairs-table-sort"
 const VIEW_PRESET_STORAGE_KEY = "cafe-service.repairs-table-view-preset"
+const SEARCH_QUERY_STORAGE_KEY = "cafe-service.repairs-search-query"
 
 const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   customer: true,
@@ -145,7 +145,7 @@ const viewPresetColumns: Record<ViewPreset, TableColumnId[]> = {
   schedule: ["status", "customer", "device", "checkIn", "checkOut"],
   financial: ["status", "customer", "device", "estimate", "additionalCosts", "profit"],
   intake: ["status", "customer", "phone", "device", "checkIn"],
-  workshop: ["status", "customer", "device", "defect", "repairTime", "createdAt"],
+  workshop: ["status", "customer", "device", "defect", "repairTime", "checkOut", "createdAt"],
   returns: ["status", "customer", "phone", "device", "checkOut", "repairCard", "invoice"],
 }
 
@@ -172,15 +172,6 @@ const viewPresetSort: Record<
 
 function isViewPreset(value: unknown): value is ViewPreset {
   return value === "compact" || value === "schedule" || value === "financial" || value === "intake" || value === "workshop" || value === "returns"
-}
-
-function loadViewPreset(): ViewPreset | null {
-  try {
-    const savedValue = window.localStorage.getItem(VIEW_PRESET_STORAGE_KEY)
-    return isViewPreset(savedValue) ? savedValue : null
-  } catch {
-    return null
-  }
 }
 
 function columnVisibilityForPreset(preset: ViewPreset): Record<TableColumnId, boolean> {
@@ -461,25 +452,17 @@ function RepairsView() {
   const [requests, setRequests] = useState<ServiceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
-    const preset = loadViewPreset()
-    return preset ? viewPresetStatus[preset] : loadStatusFilter()
-  })
-  const [searchQuery, setSearchQuery] = useState("")
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
-  const [sortColumn, setSortColumn] = useState<SortColumn | null>(() => {
-    const preset = loadViewPreset()
-    return preset ? viewPresetSort[preset].column : loadTableSort().column
-  })
-  const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
-    const preset = loadViewPreset()
-    return preset ? viewPresetSort[preset].direction : loadTableSort().direction
-  })
-  const [temporaryPreset, setTemporaryPreset] = useState<ViewPreset | null>(loadViewPreset)
-  const [visibleColumns, setVisibleColumns] = useState(() => {
-    const preset = loadViewPreset()
-    return preset ? columnVisibilityForPreset(preset) : loadColumnVisibility()
-  })
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(loadStatusFilter)
+  const [searchQuery, setSearchQuery] = useState(() =>
+    window.sessionStorage.getItem(SEARCH_QUERY_STORAGE_KEY) ?? ""
+  )
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(() =>
+    window.sessionStorage.getItem(SEARCH_QUERY_STORAGE_KEY) ?? ""
+  )
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(() => loadTableSort().column)
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => loadTableSort().direction)
+  const [temporaryPreset, setTemporaryPreset] = useState<ViewPreset | null>(null)
+  const [visibleColumns, setVisibleColumns] = useState(loadColumnVisibility)
   const persistedColumnOrder = useRepairsTableColumnOrder()
   const columnOrder = temporaryPreset
     ? [...viewPresetColumns[temporaryPreset], ...persistedColumnOrder.filter((column) => !viewPresetColumns[temporaryPreset].includes(column))]
@@ -495,6 +478,11 @@ function RepairsView() {
   ]
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
   const deleted = Boolean((location.state as { deleted?: boolean } | null)?.deleted)
+
+  useEffect(() => {
+    // Presets are transient. Remove the legacy saved-preset value once.
+    window.localStorage.removeItem(VIEW_PRESET_STORAGE_KEY)
+  }, [])
 
   useEffect(() => {
     const query = new URLSearchParams(location.search)
@@ -519,6 +507,14 @@ function RepairsView() {
     }, 250)
 
     return () => window.clearTimeout(timeoutId)
+  }, [searchQuery])
+
+  useEffect(() => {
+    if (searchQuery) {
+      window.sessionStorage.setItem(SEARCH_QUERY_STORAGE_KEY, searchQuery)
+    } else {
+      window.sessionStorage.removeItem(SEARCH_QUERY_STORAGE_KEY)
+    }
   }, [searchQuery])
 
   const filteredRequests = useMemo(
@@ -650,7 +646,6 @@ function RepairsView() {
 
   function applyViewPreset(preset: ViewPreset) {
     setTemporaryPreset(preset)
-    window.localStorage.setItem(VIEW_PRESET_STORAGE_KEY, preset)
     setVisibleColumns(columnVisibilityForPreset(preset))
     setStatusFilter(viewPresetStatus[preset])
     setSortColumn(viewPresetSort[preset].column)
@@ -659,23 +654,11 @@ function RepairsView() {
 
   function restoreSavedView() {
     setTemporaryPreset(null)
-    window.localStorage.removeItem(VIEW_PRESET_STORAGE_KEY)
     setStatusFilter(loadStatusFilter())
     setVisibleColumns(loadColumnVisibility())
     const savedViewSort = loadTableSort()
     setSortColumn(savedViewSort.column)
     setSortDirection(savedViewSort.direction)
-  }
-
-  function persistPresetView() {
-    window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(visibleColumns))
-    window.localStorage.setItem(STATUS_FILTER_STORAGE_KEY, statusFilter)
-    window.localStorage.setItem(
-      TABLE_SORT_STORAGE_KEY,
-      JSON.stringify({ column: sortColumn, direction: sortDirection })
-    )
-    window.localStorage.removeItem(VIEW_PRESET_STORAGE_KEY)
-    setTemporaryPreset(null)
   }
 
   function cycleSort(column: SortColumn) {
@@ -761,7 +744,6 @@ function RepairsView() {
             <Button type="button" variant="outline" size="icon" className={cn("text-cyan-600 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-cyan-400", temporaryPreset === "returns" && "border-cyan-500/50 bg-cyan-500/15")} onClick={() => applyViewPreset("returns")} aria-label="Widok wydań" title="Widok wydań"><TruckIcon /></Button>
             </div>
             <div className="flex gap-1" aria-label="Akcje presetów">
-              {temporaryPreset && <Button type="button" variant="outline" size="icon" className="text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400" onClick={persistPresetView} aria-label="Zastosuj preset na stałe" title="Zastosuj preset na stałe"><SaveIcon /></Button>}
             <Button type="button" variant="outline" size="icon" className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400" onClick={restoreSavedView} aria-label="Przywróć zapisany widok" title="Przywróć zapisany widok"><RotateCcwIcon /></Button>
             </div>
           </div>
@@ -1040,13 +1022,17 @@ function RepairsView() {
                       </td>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
+                        <ContextMenuItem render={<Link to={`/naprawy/${request.id}`} />}>
+                          <EyeIcon className="size-4" />
+                          Otwórz
+                        </ContextMenuItem>
                         <ContextMenuItem render={<Link to={`/naprawy/${request.id}?edit=1`} />}>
                           <PencilIcon className="size-4" />
                           Edytuj
                         </ContextMenuItem>
-                        <ContextMenuItem render={<Link to={`/naprawy/${request.id}`} />}>
-                          <EyeIcon className="size-4" />
-                          Otwórz
+                        <ContextMenuItem render={<Link to={`/naprawy/${request.id}/karta-naprawy`} />}>
+                          <FileTextIcon className="size-4" />
+                          Karta naprawy
                         </ContextMenuItem>
                         <ContextMenuItem
                           disabled={(!isActiveServiceStatus(request.status) && request.status !== "closed") || updatingStatusIds.has(request.id)}
@@ -1058,10 +1044,6 @@ function RepairsView() {
                             <CircleCheckIcon className="size-4 text-emerald-600" />
                           )}
                           {request.status === "closed" ? "Wznów" : "Zamknij"}
-                        </ContextMenuItem>
-                        <ContextMenuItem render={<Link to={`/naprawy/${request.id}/karta-naprawy`} />}>
-                          <FileTextIcon className="size-4" />
-                          Karta naprawy
                         </ContextMenuItem>
                       </ContextMenuContent>
                     </ContextMenu>
