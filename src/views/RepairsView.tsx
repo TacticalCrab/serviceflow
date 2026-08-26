@@ -64,6 +64,7 @@ import {
   isActiveServiceStatus,
   serviceStatusDotClasses,
   serviceStatusLabels,
+  serviceStatusSelectClasses,
 } from "@/features/ServiceRequests/status"
 import { useOrderedServiceStatuses } from "@/features/ServiceRequests/statusOrder"
 import { finalPrice, totalAdditionalExpenses } from "@/features/ServiceRequests/pricing"
@@ -484,6 +485,8 @@ function RepairsView() {
     { value: "active", label: "Wszystkie Aktywne" },
     ...orderedStatusOptions.map(({ value, label }) => ({ value, label })),
   ]
+  const selectedStatusFilter =
+    statusFilter === "all" || statusFilter === "active" ? undefined : statusFilter
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
   const deleted = Boolean((location.state as { deleted?: boolean } | null)?.deleted)
 
@@ -776,7 +779,21 @@ function RepairsView() {
               }
             }}
           >
-            <SelectTrigger className="h-9 w-64" aria-label="Filtr statusu">
+            <SelectTrigger
+              className={cn(
+                "h-9 w-64",
+                selectedStatusFilter && serviceStatusSelectClasses[selectedStatusFilter]
+              )}
+              aria-label="Filtr statusu"
+            >
+              {selectedStatusFilter && (
+                <span
+                  className={cn(
+                    "size-2 shrink-0 rounded-full",
+                    serviceStatusDotClasses[selectedStatusFilter]
+                  )}
+                />
+              )}
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start" alignItemWithTrigger={false}>

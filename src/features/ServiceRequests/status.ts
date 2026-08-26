@@ -57,14 +57,14 @@ const serviceStatusRowClasses: Record<ServiceStatus, string> = {
 }
 
 const serviceStatusSelectClasses: Record<ServiceStatus, string> = {
-  waiting_for_device: "bg-slate-600 text-white hover:bg-slate-700 data-pressed:bg-slate-700",
-  diagnosis: "bg-sky-600 text-white hover:bg-sky-700 data-pressed:bg-sky-700",
-  waiting_for_approval: "bg-amber-400 text-amber-950 hover:bg-amber-500 data-pressed:bg-amber-500",
-  in_repair: "bg-red-600 text-white hover:bg-red-700 data-pressed:bg-red-700",
-  waiting_for_parts: "bg-orange-500 text-white hover:bg-orange-600 data-pressed:bg-orange-600",
-  ready_for_return: "bg-cyan-600 text-white hover:bg-cyan-700 data-pressed:bg-cyan-700",
-  closed: "bg-emerald-600 text-white hover:bg-emerald-700 data-pressed:bg-emerald-700",
-  cancelled: "bg-slate-500 text-white hover:bg-slate-600 data-pressed:bg-slate-600",
+  waiting_for_device: "border-slate-500/30 bg-slate-500/10 text-slate-700 hover:bg-slate-500/15 data-pressed:bg-slate-500/20 dark:text-slate-300",
+  diagnosis: "border-sky-500/30 bg-sky-500/10 text-sky-700 hover:bg-sky-500/15 data-pressed:bg-sky-500/20 dark:text-sky-300",
+  waiting_for_approval: "border-amber-500/30 bg-amber-500/10 text-amber-800 hover:bg-amber-500/15 data-pressed:bg-amber-500/20 dark:text-amber-300",
+  in_repair: "border-red-500/30 bg-red-500/10 text-red-800 hover:bg-red-500/15 data-pressed:bg-red-500/20 dark:text-red-300",
+  waiting_for_parts: "border-orange-500/30 bg-orange-500/10 text-orange-800 hover:bg-orange-500/15 data-pressed:bg-orange-500/20 dark:text-orange-300",
+  ready_for_return: "border-cyan-500/30 bg-cyan-500/10 text-cyan-800 hover:bg-cyan-500/15 data-pressed:bg-cyan-500/20 dark:text-cyan-300",
+  closed: "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 hover:bg-emerald-500/15 data-pressed:bg-emerald-500/20 dark:text-emerald-300",
+  cancelled: "border-slate-500/30 bg-slate-500/10 text-slate-700 hover:bg-slate-500/15 data-pressed:bg-slate-500/20 dark:text-slate-300",
 }
 
 function isActiveServiceStatus(status: ServiceStatus) {

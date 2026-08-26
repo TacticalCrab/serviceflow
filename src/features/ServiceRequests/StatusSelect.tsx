@@ -51,9 +51,9 @@ function StatusSelect({
         aria-label={ariaLabel}
         className={cn(
           compact
-            ? "w-auto min-w-0 border-transparent px-2 shadow-none"
+            ? "w-auto min-w-0 gap-1.5 rounded-md border px-2 shadow-none"
             : "w-full min-w-56",
-          compact && serviceStatusSelectClasses[value],
+          serviceStatusSelectClasses[value],
           className
         )}
       >
@@ -62,7 +62,7 @@ function StatusSelect({
         ) : (
           <span
             className={cn(
-              "size-2 shrink-0 rounded-full ring-2 ring-background",
+              "size-2 shrink-0 rounded-full",
               "self-center",
               serviceStatusDotClasses[value]
             )}
