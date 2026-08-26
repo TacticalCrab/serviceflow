@@ -333,7 +333,7 @@ function ServiceForm({
             </form.Field>
           </FieldSet>
 
-          <FieldSet className="order-4 rounded-lg border p-4">
+          <FieldSet className="order-2 rounded-lg border p-4">
             <FieldLegend>Dane klienta</FieldLegend>
             <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <form.Field name="client.name">
@@ -1034,7 +1034,7 @@ function ServiceForm({
             </FieldGroup>
           </FieldSet>
 
-          <FieldSet className="order-2 rounded-lg border p-4">
+          <FieldSet className="order-3 rounded-lg border p-4">
             <FieldLegend>Plan naprawy</FieldLegend>
             <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <form.Field name="repairTime">
@@ -1146,7 +1146,7 @@ function ServiceForm({
             </form.Field>
           </FieldSet>
 
-          <FieldSet className="order-3 rounded-lg border p-4">
+          <FieldSet className="order-4 rounded-lg border p-4">
             <FieldLegend>Rozliczenie</FieldLegend>
             <FieldDescription>
               Robocizna jest podstawą kwoty dla klienta. Każdy wydatek pozostaje kosztem wewnętrznym, niezależnie od tego, czy zostanie doliczony do kwoty końcowej.

@@ -14,6 +14,7 @@ import {
   FileTextIcon,
   LoaderCircleIcon,
   PackageCheckIcon,
+  PackageSearchIcon,
   PencilIcon,
   RotateCcwIcon,
   SearchIcon,
@@ -90,7 +91,7 @@ type TableColumnId =
   | "createdAt"
   | "statusChangedAt"
 type SortColumn = "id" | TableColumnId
-type ViewPreset = "compact" | "schedule" | "financial" | "intake" | "workshop" | "returns"
+type ViewPreset = "compact" | "schedule" | "financial" | "intake" | "workshop" | "parts" | "returns"
 
 const tableColumnOptions: Array<{ id: TableColumnId; label: string }> = [
   { id: "customer", label: "Klient" },
@@ -141,11 +142,12 @@ const defaultColumnVisibility: Record<TableColumnId, boolean> = {
 }
 
 const viewPresetColumns: Record<ViewPreset, TableColumnId[]> = {
-  compact: ["status", "customer", "device", "estimate"],
+  compact: ["status", "customer", "device", "createdAt", "estimate"],
   schedule: ["status", "customer", "device", "checkIn", "checkOut"],
   financial: ["status", "customer", "device", "estimate", "additionalCosts", "profit"],
   intake: ["status", "customer", "phone", "device", "checkIn"],
   workshop: ["status", "customer", "device", "defect", "repairTime", "checkOut", "createdAt"],
+  parts: ["status", "customer", "phone", "device", "manufacturer", "model", "defect", "createdAt"],
   returns: ["status", "customer", "phone", "device", "checkOut", "repairCard", "invoice"],
 }
 
@@ -155,6 +157,7 @@ const viewPresetStatus: Record<ViewPreset, StatusFilter> = {
   financial: "closed",
   intake: "waiting_for_device",
   workshop: "in_repair",
+  parts: "waiting_for_parts",
   returns: "ready_for_return",
 }
 
@@ -162,16 +165,17 @@ const viewPresetSort: Record<
   ViewPreset,
   { column: SortColumn; direction: Exclude<SortDirection, null> }
 > = {
-  compact: { column: "id", direction: "desc" },
+  compact: { column: "createdAt", direction: "desc" },
   schedule: { column: "checkIn", direction: "asc" },
   financial: { column: "estimate", direction: "desc" },
   intake: { column: "checkIn", direction: "asc" },
   workshop: { column: "createdAt", direction: "asc" },
+  parts: { column: "createdAt", direction: "asc" },
   returns: { column: "checkOut", direction: "asc" },
 }
 
 function isViewPreset(value: unknown): value is ViewPreset {
-  return value === "compact" || value === "schedule" || value === "financial" || value === "intake" || value === "workshop" || value === "returns"
+  return value === "compact" || value === "schedule" || value === "financial" || value === "intake" || value === "workshop" || value === "parts" || value === "returns"
 }
 
 function columnVisibilityForPreset(preset: ViewPreset): Record<TableColumnId, boolean> {
@@ -741,6 +745,7 @@ function RepairsView() {
             <Button type="button" variant="outline" size="icon" className={cn("text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400", temporaryPreset === "financial" && "border-emerald-500/50 bg-emerald-500/15")} onClick={() => applyViewPreset("financial")} aria-label="Widok finansowy" title="Widok finansowy"><WalletCardsIcon /></Button>
             <Button type="button" variant="outline" size="icon" className={cn("text-slate-600 hover:bg-slate-500/10 hover:text-slate-700 dark:text-slate-300", temporaryPreset === "intake" && "border-slate-500/50 bg-slate-500/15")} onClick={() => applyViewPreset("intake")} aria-label="Widok przyjęć" title="Widok przyjęć"><PackageCheckIcon /></Button>
             <Button type="button" variant="outline" size="icon" className={cn("text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400", temporaryPreset === "workshop" && "border-red-500/50 bg-red-500/15")} onClick={() => applyViewPreset("workshop")} aria-label="Widok warsztatu" title="Widok warsztatu"><WrenchIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400", temporaryPreset === "parts" && "border-amber-500/50 bg-amber-500/15")} onClick={() => applyViewPreset("parts")} aria-label="Oczekujące na części" title="Oczekujące na części"><PackageSearchIcon /></Button>
             <Button type="button" variant="outline" size="icon" className={cn("text-cyan-600 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-cyan-400", temporaryPreset === "returns" && "border-cyan-500/50 bg-cyan-500/15")} onClick={() => applyViewPreset("returns")} aria-label="Widok wydań" title="Widok wydań"><TruckIcon /></Button>
             </div>
             <div className="flex gap-1" aria-label="Akcje presetów">
