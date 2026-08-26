@@ -145,7 +145,7 @@
 }
 
 @page {
-  size: A4 portrait;
+  size: 210mm 297mm;
   /* WebKitGTK/CUPS commonly reserves a small unprintable edge on Linux. */
   margin: 5mm;
 }
@@ -200,12 +200,13 @@
 
   .repair-card-document {
     /*
-     * Keep the A4 aspect ratio, but fit inside the 5 mm printable safe area.
-     * This avoids WebKitGTK creating a second page when printing to PDF.
+     * Keep the A4 aspect ratio, but also fit in a US Letter print area.  Some
+     * Linux GTK print dialogs keep Letter as their native default even when
+     * CSS requests A4; this prevents that fallback from spilling onto page 2.
      */
-    width: 200mm !important;
+    width: 188mm !important;
     max-width: none !important;
-    height: 282.857mm !important;
+    height: 265.886mm !important;
     margin: 0 !important;
     box-shadow: none !important;
     break-inside: avoid-page;
