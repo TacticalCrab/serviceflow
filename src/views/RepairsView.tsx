@@ -123,6 +123,7 @@ const STATUS_FILTER_STORAGE_KEY = "cafe-service.repairs-status-filter"
 const TABLE_SORT_STORAGE_KEY = "cafe-service.repairs-table-sort"
 const VIEW_PRESET_STORAGE_KEY = "cafe-service.repairs-table-view-preset"
 const SEARCH_QUERY_STORAGE_KEY = "cafe-service.repairs-search-query"
+const REPAIRS_PER_PAGE = 15
 
 const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   customer: true,
@@ -470,6 +471,7 @@ function RepairsView() {
   )
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(() => loadTableSort().column)
   const [sortDirection, setSortDirection] = useState<SortDirection>(() => loadTableSort().direction)
+  const [currentPage, setCurrentPage] = useState(1)
   const [temporaryPreset, setTemporaryPreset] = useState<ViewPreset | null>(null)
   const [visibleColumns, setVisibleColumns] = useState(loadColumnVisibility)
   const persistedColumnOrder = useRepairsTableColumnOrder()
@@ -560,6 +562,20 @@ function RepairsView() {
       return sortDirection === "asc" ? comparison : -comparison
     })
   }, [filteredRequests, orderedStatusOptions, sortColumn, sortDirection])
+  const pageCount = Math.max(1, Math.ceil(sortedRequests.length / REPAIRS_PER_PAGE))
+  const activePage = Math.min(currentPage, pageCount)
+  const paginatedRequests = useMemo(() => {
+    const start = (activePage - 1) * REPAIRS_PER_PAGE
+    return sortedRequests.slice(start, start + REPAIRS_PER_PAGE)
+  }, [activePage, sortedRequests])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [debouncedSearchQuery, statusFilter, sortColumn, sortDirection])
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, pageCount))
+  }, [pageCount])
 
   useEffect(() => {
     let cancelled = false
@@ -939,6 +955,7 @@ function RepairsView() {
               </div>
             </div>
           ) : (
+            <>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1100px] text-left text-sm">
                 <thead className="border-y bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -968,7 +985,7 @@ function RepairsView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {sortedRequests.map((request) => (
+                  {paginatedRequests.map((request) => (
                     <ContextMenu key={request.id}>
                       <ContextMenuTrigger
                         render={<tr className="transition-colors hover:bg-muted/30" />}
@@ -980,7 +997,6 @@ function RepairsView() {
                           <PinIcon
                             className="ml-1 inline-block size-3.5 -translate-y-px text-primary"
                             aria-label="Przypięte zlecenie"
-                            title="Przypięte zlecenie"
                           />
                         )}
                       </td>
@@ -1094,6 +1110,37 @@ function RepairsView() {
                 </tbody>
               </table>
             </div>
+            {pageCount > 1 && (
+              <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-muted-foreground">
+                  Wyświetlono {(activePage - 1) * REPAIRS_PER_PAGE + 1}–{Math.min(activePage * REPAIRS_PER_PAGE, sortedRequests.length)} z {sortedRequests.length} zleceń
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={activePage === 1}
+                    onClick={() => setCurrentPage((page) => page - 1)}
+                  >
+                    Poprzednia
+                  </Button>
+                  <span className="whitespace-nowrap text-muted-foreground">
+                    Strona {activePage} z {pageCount}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={activePage === pageCount}
+                    onClick={() => setCurrentPage((page) => page + 1)}
+                  >
+                    Następna
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </CardContent>
       </Card>
