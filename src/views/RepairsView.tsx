@@ -183,6 +183,15 @@ function isViewPreset(value: unknown): value is ViewPreset {
   return value === "compact" || value === "schedule" || value === "financial" || value === "intake" || value === "workshop" || value === "parts" || value === "returns"
 }
 
+function loadViewPreset(): ViewPreset | null {
+  try {
+    const savedPreset = window.localStorage.getItem(VIEW_PRESET_STORAGE_KEY)
+    return isViewPreset(savedPreset) ? savedPreset : null
+  } catch {
+    return null
+  }
+}
+
 function columnVisibilityForPreset(preset: ViewPreset): Record<TableColumnId, boolean> {
   const presetColumns = viewPresetColumns[preset]
   return tableColumnOptions.reduce(
@@ -458,22 +467,31 @@ function requestMatchesSearch(request: ServiceRequest, query: string) {
 
 function RepairsView() {
   const location = useLocation()
+  const [initialPreset] = useState<ViewPreset | null>(loadViewPreset)
   const [requests, setRequests] = useState<ServiceRequest[]>([])
   const [, setPinnedVersion] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(loadStatusFilter)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
+    initialPreset ? viewPresetStatus[initialPreset] : loadStatusFilter()
+  )
   const [searchQuery, setSearchQuery] = useState(() =>
     window.sessionStorage.getItem(SEARCH_QUERY_STORAGE_KEY) ?? ""
   )
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(() =>
     window.sessionStorage.getItem(SEARCH_QUERY_STORAGE_KEY) ?? ""
   )
-  const [sortColumn, setSortColumn] = useState<SortColumn | null>(() => loadTableSort().column)
-  const [sortDirection, setSortDirection] = useState<SortDirection>(() => loadTableSort().direction)
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(() =>
+    initialPreset ? viewPresetSort[initialPreset].column : loadTableSort().column
+  )
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() =>
+    initialPreset ? viewPresetSort[initialPreset].direction : loadTableSort().direction
+  )
   const [currentPage, setCurrentPage] = useState(1)
-  const [temporaryPreset, setTemporaryPreset] = useState<ViewPreset | null>(null)
-  const [visibleColumns, setVisibleColumns] = useState(loadColumnVisibility)
+  const [temporaryPreset, setTemporaryPreset] = useState<ViewPreset | null>(initialPreset)
+  const [visibleColumns, setVisibleColumns] = useState(() =>
+    initialPreset ? columnVisibilityForPreset(initialPreset) : loadColumnVisibility()
+  )
   const persistedColumnOrder = useRepairsTableColumnOrder()
   const columnOrder = temporaryPreset
     ? [...viewPresetColumns[temporaryPreset], ...persistedColumnOrder.filter((column) => !viewPresetColumns[temporaryPreset].includes(column))]
@@ -496,11 +514,6 @@ function RepairsView() {
     const refreshPins = () => setPinnedVersion((version) => version + 1)
     window.addEventListener(PINNED_REQUESTS_CHANGED_EVENT, refreshPins)
     return () => window.removeEventListener(PINNED_REQUESTS_CHANGED_EVENT, refreshPins)
-  }, [])
-
-  useEffect(() => {
-    // Presets are transient. Remove the legacy saved-preset value once.
-    window.localStorage.removeItem(VIEW_PRESET_STORAGE_KEY)
   }, [])
 
   useEffect(() => {
@@ -606,6 +619,14 @@ function RepairsView() {
     if (temporaryPreset) return
     window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(visibleColumns))
   }, [temporaryPreset, visibleColumns])
+
+  useEffect(() => {
+    if (temporaryPreset) {
+      window.localStorage.setItem(VIEW_PRESET_STORAGE_KEY, temporaryPreset)
+    } else {
+      window.localStorage.removeItem(VIEW_PRESET_STORAGE_KEY)
+    }
+  }, [temporaryPreset])
 
   useEffect(() => {
     if (temporaryPreset) return
