@@ -766,23 +766,9 @@ function RepairsView() {
       )}
 
       <Card className="bg-muted/20">
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex flex-wrap justify-end gap-3">
-            <div className="flex flex-wrap gap-1" aria-label="Presety widoku tabeli">
-            <Button type="button" variant="outline" size="icon" className={cn("text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 dark:text-violet-400", temporaryPreset === "compact" && "border-violet-500/50 bg-violet-500/15")} onClick={() => applyViewPreset("compact")} aria-label="Kompaktowy widok" title="Kompaktowy widok"><SlidersHorizontalIcon /></Button>
-            <Button type="button" variant="outline" size="icon" className={cn("text-sky-600 hover:bg-sky-500/10 hover:text-sky-700 dark:text-sky-400", temporaryPreset === "schedule" && "border-sky-500/50 bg-sky-500/15")} onClick={() => applyViewPreset("schedule")} aria-label="Widok terminów" title="Widok terminów"><CalendarDaysIcon /></Button>
-            <Button type="button" variant="outline" size="icon" className={cn("text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400", temporaryPreset === "financial" && "border-emerald-500/50 bg-emerald-500/15")} onClick={() => applyViewPreset("financial")} aria-label="Widok finansowy" title="Widok finansowy"><WalletCardsIcon /></Button>
-            <Button type="button" variant="outline" size="icon" className={cn("text-slate-600 hover:bg-slate-500/10 hover:text-slate-700 dark:text-slate-300", temporaryPreset === "intake" && "border-slate-500/50 bg-slate-500/15")} onClick={() => applyViewPreset("intake")} aria-label="Widok przyjęć" title="Widok przyjęć"><PackageCheckIcon /></Button>
-            <Button type="button" variant="outline" size="icon" className={cn("text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400", temporaryPreset === "workshop" && "border-red-500/50 bg-red-500/15")} onClick={() => applyViewPreset("workshop")} aria-label="Widok warsztatu" title="Widok warsztatu"><WrenchIcon /></Button>
-            <Button type="button" variant="outline" size="icon" className={cn("text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400", temporaryPreset === "parts" && "border-amber-500/50 bg-amber-500/15")} onClick={() => applyViewPreset("parts")} aria-label="Oczekujące na części" title="Oczekujące na części"><PackageSearchIcon /></Button>
-            <Button type="button" variant="outline" size="icon" className={cn("text-cyan-600 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-cyan-400", temporaryPreset === "returns" && "border-cyan-500/50 bg-cyan-500/15")} onClick={() => applyViewPreset("returns")} aria-label="Widok wydań" title="Widok wydań"><TruckIcon /></Button>
-            </div>
-            <div className="flex gap-1" aria-label="Akcje presetów">
-            <Button type="button" variant="outline" size="icon" className="text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400" onClick={restoreSavedView} aria-label="Przywróć zapisany widok" title="Przywróć zapisany widok"><RotateCcwIcon /></Button>
-            </div>
-          </div>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-1.5">
+        <CardContent className="space-y-2 p-3 sm:px-4">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-2">
           <label className="text-sm font-medium">
             Status
           </label>
@@ -797,7 +783,7 @@ function RepairsView() {
           >
             <SelectTrigger
               className={cn(
-                "h-9 w-64",
+                "h-8 w-52",
                 selectedStatusFilter && serviceStatusSelectClasses[selectedStatusFilter]
               )}
               aria-label="Filtr statusu"
@@ -845,7 +831,7 @@ function RepairsView() {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Nr zlecenia, klient, telefon, ekspres…"
-              className="h-9 pl-9 pr-9"
+              className="h-8 pl-9 pr-9"
               autoComplete="off"
             />
             {searchQuery && (
@@ -868,7 +854,7 @@ function RepairsView() {
           <Popover>
             <PopoverTrigger
               render={
-                <Button type="button" variant="outline" size="icon" aria-label="Wybierz widoczne kolumny" />
+                <Button type="button" variant="outline" size="icon" className="size-8" aria-label="Wybierz widoczne kolumny" />
               }
             >
               <SlidersHorizontalIcon />
@@ -912,6 +898,16 @@ function RepairsView() {
             </Button>
           )}
           </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-1 border-t pt-2" aria-label="Presety widoku tabeli">
+            <Button type="button" variant="outline" size="icon" className={cn("size-8 text-violet-600 hover:bg-violet-500/10 hover:text-violet-700 dark:text-violet-400", temporaryPreset === "compact" && "border-violet-500/50 bg-violet-500/15")} onClick={() => applyViewPreset("compact")} aria-label="Kompaktowy widok" title="Kompaktowy widok"><SlidersHorizontalIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("size-8 text-sky-600 hover:bg-sky-500/10 hover:text-sky-700 dark:text-sky-400", temporaryPreset === "schedule" && "border-sky-500/50 bg-sky-500/15")} onClick={() => applyViewPreset("schedule")} aria-label="Widok terminów" title="Widok terminów"><CalendarDaysIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("size-8 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400", temporaryPreset === "financial" && "border-emerald-500/50 bg-emerald-500/15")} onClick={() => applyViewPreset("financial")} aria-label="Widok finansowy" title="Widok finansowy"><WalletCardsIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("size-8 text-slate-600 hover:bg-slate-500/10 hover:text-slate-700 dark:text-slate-300", temporaryPreset === "intake" && "border-slate-500/50 bg-slate-500/15")} onClick={() => applyViewPreset("intake")} aria-label="Widok przyjęć" title="Widok przyjęć"><PackageCheckIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("size-8 text-red-600 hover:bg-red-500/10 hover:text-red-700 dark:text-red-400", temporaryPreset === "workshop" && "border-red-500/50 bg-red-500/15")} onClick={() => applyViewPreset("workshop")} aria-label="Widok warsztatu" title="Widok warsztatu"><WrenchIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("size-8 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400", temporaryPreset === "parts" && "border-amber-500/50 bg-amber-500/15")} onClick={() => applyViewPreset("parts")} aria-label="Oczekujące na części" title="Oczekujące na części"><PackageSearchIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className={cn("size-8 text-cyan-600 hover:bg-cyan-500/10 hover:text-cyan-700 dark:text-cyan-400", temporaryPreset === "returns" && "border-cyan-500/50 bg-cyan-500/15")} onClick={() => applyViewPreset("returns")} aria-label="Widok wydań" title="Widok wydań"><TruckIcon /></Button>
+            <Button type="button" variant="outline" size="icon" className="size-8 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400" onClick={restoreSavedView} aria-label="Przywróć zapisany widok" title="Przywróć zapisany widok"><RotateCcwIcon /></Button>
           </div>
         </CardContent>
       </Card>
