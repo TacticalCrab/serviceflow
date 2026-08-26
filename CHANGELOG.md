@@ -28,3 +28,4 @@ Second version after feedback
 - Feature: order of columns in table of repairs
 - Feature: presets & minor changes
 - Feature: configuration for capitalized input values & minor changes
+- Feature: Pin requests

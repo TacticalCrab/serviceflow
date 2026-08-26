@@ -16,11 +16,13 @@ import {
   ArrowRightIcon,
   CalendarDaysIcon,
   CheckCircle2Icon,
+  ChevronDownIcon,
   CircleAlertIcon,
   ClipboardListIcon,
   LoaderCircleIcon,
   PackageCheckIcon,
   PlusIcon,
+  PinOffIcon,
   TruckIcon,
   WalletCardsIcon,
   WrenchIcon,
@@ -41,8 +43,11 @@ import {
   type ServiceRequest,
 } from "@/features/ServiceRequests/api"
 import { isActiveServiceStatus } from "@/features/ServiceRequests/status"
+import { serviceStatusBadgeClasses, serviceStatusLabels } from "@/features/ServiceRequests/status"
 import { finalPrice, totalAdditionalExpenses } from "@/features/ServiceRequests/pricing"
+import { getPinnedRequestIds, PINNED_REQUESTS_CHANGED_EVENT, setRequestPinned } from "@/features/ServiceRequests/pinnedRequests"
 import { cn } from "@/lib/utils"
+import { formatPhoneNumber } from "@/lib/phone"
 
 function isDateInPeriod(value: string, from: Date, to: Date) {
   const date = new Date(value)
@@ -276,12 +281,56 @@ function ScheduledTransportCard({
   )
 }
 
+function DashboardSection({ id, title, count, children }: { id: string; title: string; count?: number; children: React.ReactNode }) {
+  const storageKey = `cafe-service.dashboard-section.${id}`
+  const [open, setOpen] = useState(() => window.localStorage.getItem(storageKey) !== "collapsed")
+  function toggle() {
+    setOpen((current) => {
+      window.localStorage.setItem(storageKey, current ? "collapsed" : "expanded")
+      return !current
+    })
+  }
+  return <section className="grid gap-5">
+    <button type="button" onClick={toggle} className="flex w-full items-center gap-2 text-left" aria-expanded={open} aria-controls={`dashboard-section-${id}`}>
+      <ChevronDownIcon className={cn("size-5 text-muted-foreground transition-transform", !open && "-rotate-90")} />
+      <h2 className="text-lg font-semibold">{title}</h2>
+      {typeof count === "number" && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{count}</span>}
+    </button>
+    {open && <div id={`dashboard-section-${id}`}>{children}</div>}
+  </section>
+}
+
+function PinnedRequestCard({ request, onUnpin }: { request: ServiceRequest; onUnpin: () => void }) {
+  const client = [request.client.name, request.client.surname].filter(Boolean).join(" ")
+  const device = [request.device.name, request.device.manufacturer, request.device.model, request.device.serialNumber ? `S/N: ${request.device.serialNumber}` : undefined].filter(Boolean).join(" · ")
+  const returnDate = request.client.preferences?.checkOut?.date
+  const parsedReturnDate = returnDate ? new Date(returnDate) : null
+  const returnLabel = parsedReturnDate && isValid(parsedReturnDate) ? format(parsedReturnDate, "d MMM yyyy", { locale: pl }) : null
+  const checkOut = request.client.preferences?.checkOut
+  const checkIn = request.client.preferences?.checkIn
+  const checkInDate = checkIn?.date ? new Date(checkIn.date) : null
+  const checkInLabel = checkInDate && isValid(checkInDate) ? format(checkInDate, "d MMM yyyy", { locale: pl }) : null
+  const checkInMethod = checkIn?.method === "clientDropOff" ? "Klient przywozi" : checkIn?.method === "servicePickup" ? "Serwis odbiera" : null
+  const checkInTime = checkIn?.timeMode === "specific" ? checkIn.time : checkIn?.timeMode === "range" ? [checkIn.timeFrom, checkIn.timeTo].filter(Boolean).join("–") : null
+  const returnMethod = checkOut?.method === "clientPickup" ? "Klient odbiera" : checkOut?.method === "serviceDelivery" ? "Serwis dostarcza" : null
+  const returnTime = checkOut?.timeMode === "specific" ? checkOut.time : checkOut?.timeMode === "range" ? [checkOut.timeFrom, checkOut.timeTo].filter(Boolean).join("–") : null
+  const estimate = finalPrice(request.costEstimate, request.additionalCosts)
+  return <Card className="h-full"><CardHeader className="pb-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><CardTitle className="text-base">#{request.id} · {device}</CardTitle><CardDescription className="mt-1">{client}</CardDescription></div><Button type="button" variant="ghost" size="icon-sm" onClick={onUnpin} aria-label={`Odepnij zlecenie #${request.id}`} title="Odepnij"><PinOffIcon /></Button></div></CardHeader><CardContent className="space-y-3"><div className="grid gap-1 text-sm text-muted-foreground"><p>{formatPhoneNumber(request.client.phone) || "Brak telefonu"}{request.client.email ? ` · ${request.client.email}` : ""}</p>{request.client.address && <p className="line-clamp-2">Adres: {request.client.address}</p>}</div><dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-y py-3 text-sm"><div><dt className="text-xs text-muted-foreground">Utworzono</dt><dd>{format(new Date(request.createdAt), "d MMM yyyy", { locale: pl })}</dd></div><div><dt className="text-xs text-muted-foreground">Zmiana statusu</dt><dd>{format(new Date(request.statusChangedAt), "d MMM yyyy", { locale: pl })}</dd></div>{checkInLabel && <div><dt className="text-xs text-muted-foreground">Przyjęcie / odbiór</dt><dd>{checkInLabel}{checkInTime ? `, ${checkInTime}` : ""}</dd></div>}{checkInMethod && <div><dt className="text-xs text-muted-foreground">Sposób przyjęcia</dt><dd>{checkInMethod}</dd></div>}{returnLabel && <div><dt className="text-xs text-muted-foreground">Planowany zwrot</dt><dd>{returnLabel}{returnTime ? `, ${returnTime}` : ""}</dd></div>}{returnMethod && <div><dt className="text-xs text-muted-foreground">Sposób zwrotu</dt><dd>{returnMethod}</dd></div>}{request.repairTime && <div><dt className="text-xs text-muted-foreground">Czas naprawy</dt><dd>{request.repairTime}</dd></div>}{estimate !== undefined && <div><dt className="text-xs text-muted-foreground">Kwota końcowa</dt><dd>{formatCurrency(estimate)}</dd></div>}</dl>{request.device.defect && <p className="line-clamp-2 text-sm"><span className="font-medium">Usterka: </span>{request.device.defect}</p>}{request.note && <p className="line-clamp-2 text-sm"><span className="font-medium">Notatka do zlecenia: </span>{request.note}</p>}{request.client.note && <p className="line-clamp-2 text-sm"><span className="font-medium">Notatka o kliencie: </span>{request.client.note}</p>}<div className="flex items-center justify-between gap-3"><span className={cn("rounded-full px-2 py-1 text-xs font-medium", serviceStatusBadgeClasses[request.status])}>{serviceStatusLabels[request.status]}</span><Button size="sm" variant="outline" nativeButton={false} render={<Link to={`/naprawy/${request.id}`} />}>Otwórz <ArrowRightIcon data-icon="inline-end" /></Button></div></CardContent></Card>
+}
+
 function HomeView() {
   const [periodStart, setPeriodStart] = useState(() => startOfMonth(new Date()))
   const [periodEnd, setPeriodEnd] = useState(() => endOfMonth(new Date()))
   const [requests, setRequests] = useState<ServiceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pinnedIds, setPinnedIds] = useState(getPinnedRequestIds)
+
+  useEffect(() => {
+    const refresh = () => setPinnedIds(getPinnedRequestIds())
+    window.addEventListener(PINNED_REQUESTS_CHANGED_EVENT, refresh)
+    return () => window.removeEventListener(PINNED_REQUESTS_CHANGED_EVENT, refresh)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -375,6 +424,8 @@ function HomeView() {
       value
     )
 
+  const pinnedRequests = useMemo(() => pinnedIds.map((id) => requests.find((request) => request.id === id)).filter((request): request is ServiceRequest => Boolean(request)), [pinnedIds, requests])
+
   return (
     <section className="grid gap-8">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -411,8 +462,11 @@ function HomeView() {
         </div>
       )}
 
-      <div>
-        <h2 className="mb-4 text-lg font-semibold">Szybkie akcje</h2>
+      <DashboardSection id="pinned" title="Przypięte zlecenia" count={!loading ? pinnedRequests.length : undefined}>
+        {loading ? <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed text-sm text-muted-foreground"><LoaderCircleIcon className="size-4 animate-spin" /> Pobieranie zleceń…</div> : pinnedRequests.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{pinnedRequests.map((request) => <PinnedRequestCard key={request.id} request={request} onUnpin={() => setRequestPinned(request.id, false)} />)}</div> : <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Nie przypięto jeszcze żadnego zlecenia. Otwórz zlecenie i użyj przycisku „Przypnij”.</div>}
+      </DashboardSection>
+
+      <DashboardSection id="quick-actions" title="Szybkie akcje">
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
@@ -454,8 +508,9 @@ function HomeView() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </DashboardSection>
 
+      <DashboardSection id="statistics" title="Statystyki">
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title="W trakcie naprawy"
@@ -486,16 +541,9 @@ function HomeView() {
           to="/naprawy?preset=financial"
         />
       </div>
+      </DashboardSection>
 
-      <div className="grid gap-5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Zaplanowane wydania urządzeń</h2>
-          {!loading && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {stats.futureReturns.length}
-            </span>
-          )}
-        </div>
+      <DashboardSection id="returns" title="Zaplanowane wydania urządzeń" count={!loading ? stats.futureReturns.length : undefined}>
         {loading ? (
           <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed text-sm text-muted-foreground">
             <LoaderCircleIcon className="size-4 animate-spin" />
@@ -517,17 +565,9 @@ function HomeView() {
             Brak zaplanowanych wydań lub dostaw urządzeń.
           </div>
         )}
-      </div>
+      </DashboardSection>
 
-      <div className="grid gap-5">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold">Zaplanowane przyjęcia urządzeń</h2>
-          {!loading && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {stats.futureCheckIns.length}
-            </span>
-          )}
-        </div>
+      <DashboardSection id="check-ins" title="Zaplanowane przyjęcia urządzeń" count={!loading ? stats.futureCheckIns.length : undefined}>
         {loading ? (
           <div className="flex min-h-28 items-center justify-center gap-2 rounded-xl border border-dashed text-sm text-muted-foreground">
             <LoaderCircleIcon className="size-4 animate-spin" />
@@ -549,7 +589,7 @@ function HomeView() {
             Brak zaplanowanych przyjęć lub odbiorów urządzeń.
           </div>
         )}
-      </div>
+      </DashboardSection>
 
     </section>
   )

@@ -18,6 +18,8 @@ import {
   FileTextIcon,
   LoaderCircleIcon,
   PencilIcon,
+  PinIcon,
+  PinOffIcon,
   RotateCcwIcon,
   SaveIcon,
   Trash2Icon,
@@ -67,6 +69,7 @@ import {
 } from "@/features/ServiceRequests/pricing"
 import { cn } from "@/lib/utils"
 import { formatPhoneNumber } from "@/lib/phone"
+import { isRequestPinned, setRequestPinned } from "@/features/ServiceRequests/pinnedRequests"
 
 const EDIT_FORM_ID = "service-request-edit-form"
 
@@ -306,6 +309,7 @@ function RequestDetailsView() {
   const [deleting, setDeleting] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [pinned, setPinned] = useState(() => isRequestPinned(requestId))
 
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
@@ -584,6 +588,17 @@ function RequestDetailsView() {
               >
                 <PencilIcon data-icon="inline-start" />
                 Edytuj zlecenie
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setRequestPinned(request.id, !pinned)
+                  setPinned(!pinned)
+                }}
+              >
+                {pinned ? <PinOffIcon data-icon="inline-start" /> : <PinIcon data-icon="inline-start" />}
+                {pinned ? "Odepnij" : "Przypnij"}
               </Button>
               {isActiveServiceStatus(request.status) && (
                 <AlertDialog

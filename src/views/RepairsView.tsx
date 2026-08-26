@@ -16,6 +16,8 @@ import {
   PackageCheckIcon,
   PackageSearchIcon,
   PencilIcon,
+  PinIcon,
+  PinOffIcon,
   RotateCcwIcon,
   SearchIcon,
   SlidersHorizontalIcon,
@@ -68,6 +70,7 @@ import { finalPrice, totalAdditionalExpenses } from "@/features/ServiceRequests/
 import { useRepairsTableColumnOrder } from "@/features/ServiceRequests/tableColumnOrder"
 import { cn } from "@/lib/utils"
 import { formatPhoneNumber } from "@/lib/phone"
+import { isRequestPinned, PINNED_REQUESTS_CHANGED_EVENT, setRequestPinned } from "@/features/ServiceRequests/pinnedRequests"
 
 type StatusFilter = ServiceStatus | "active" | "all"
 type SortDirection = "desc" | "asc" | null
@@ -454,6 +457,7 @@ function requestMatchesSearch(request: ServiceRequest, query: string) {
 function RepairsView() {
   const location = useLocation()
   const [requests, setRequests] = useState<ServiceRequest[]>([])
+  const [, setPinnedVersion] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(loadStatusFilter)
@@ -482,6 +486,12 @@ function RepairsView() {
   ]
   const created = Boolean((location.state as { created?: boolean } | null)?.created)
   const deleted = Boolean((location.state as { deleted?: boolean } | null)?.deleted)
+
+  useEffect(() => {
+    const refreshPins = () => setPinnedVersion((version) => version + 1)
+    window.addEventListener(PINNED_REQUESTS_CHANGED_EVENT, refreshPins)
+    return () => window.removeEventListener(PINNED_REQUESTS_CHANGED_EVENT, refreshPins)
+  }, [])
 
   useEffect(() => {
     // Presets are transient. Remove the legacy saved-preset value once.
@@ -949,6 +959,13 @@ function RepairsView() {
                       <td className="px-4 py-3 font-medium">
                         <span className="text-muted-foreground/70">#</span>
                         {request.id}
+                        {isRequestPinned(request.id) && (
+                          <PinIcon
+                            className="ml-1 inline-block size-3.5 -translate-y-px text-primary"
+                            aria-label="Przypięte zlecenie"
+                            title="Przypięte zlecenie"
+                          />
+                        )}
                       </td>
                       {false && <>
                       {visibleColumns.status && <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
@@ -1038,6 +1055,10 @@ function RepairsView() {
                         <ContextMenuItem render={<Link to={`/naprawy/${request.id}/karta-naprawy`} />}>
                           <FileTextIcon className="size-4" />
                           Karta naprawy
+                        </ContextMenuItem>
+                        <ContextMenuItem onClick={() => setRequestPinned(request.id, !isRequestPinned(request.id))}>
+                          {isRequestPinned(request.id) ? <PinOffIcon className="size-4" /> : <PinIcon className="size-4" />}
+                          {isRequestPinned(request.id) ? "Odepnij" : "Przypnij"}
                         </ContextMenuItem>
                         <ContextMenuItem
                           disabled={(!isActiveServiceStatus(request.status) && request.status !== "closed") || updatingStatusIds.has(request.id)}
