@@ -123,6 +123,15 @@ function RepairCardDocument({ data, settings }: RepairCardDocumentProps) {
             </DocumentRow>
             <DocumentRow label="Słownie:">{data.amountInWords.trim()}</DocumentRow>
           </dl>
+
+          {data.additionalInfo.trim() && (
+            <aside
+              className="repair-card-additional-info mt-[4cqw] max-w-[25cqw] break-words whitespace-pre-wrap font-normal text-[1.65cqw] leading-[1.25]"
+              data-repair-card-section="additional-info"
+            >
+              {data.additionalInfo.trim()}
+            </aside>
+          )}
         </main>
 
         <footer

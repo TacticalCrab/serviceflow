@@ -58,6 +58,8 @@ const EMPTY_FIRM_SETTINGS: FirmSettings = {
 }
 const DEFAULT_DEVICE_NAME = "Ekspres do kawy"
 const DEVICE_NAME_DEFAULT_KEY = "repair-card.device-name"
+const DEFAULT_ADDITIONAL_INFO = "Sprzęt jest objęty gwarancją serwisu przez 3 miesiące"
+const ADDITIONAL_INFO_DEFAULT_KEY = "repair-card.additional-info"
 
 function FormField({
   id,
@@ -515,6 +517,22 @@ function RepairCardView() {
                       </FormField>
                     </div>
                   </div>
+                </div>
+
+                <div className="border-t pt-5">
+                  <FormField
+                    id="repair-card-additional-info"
+                    label="Informacje dodatkowe"
+                    description="Ten tekst pojawi się na karcie naprawy pod danymi urządzenia."
+                  >
+                    <DefaultValueInput
+                      id="repair-card-additional-info"
+                      value={data.additionalInfo}
+                      onValueChange={(value) => updateField("additionalInfo", value)}
+                      defaultKey={ADDITIONAL_INFO_DEFAULT_KEY}
+                      defaultValue={DEFAULT_ADDITIONAL_INFO}
+                    />
+                  </FormField>
                 </div>
 
                 <div className="border-t pt-5">

@@ -8,6 +8,7 @@ type RepairCardData = {
   deviceName: string
   manufacturer: string
   model: string
+  additionalInfo: string
   performedActions: string[]
   amount: string
   amountInWords: string
@@ -234,6 +235,7 @@ function createRepairCardData(
     deviceName: request?.device.name ?? "",
     manufacturer: request?.device.manufacturer ?? "",
     model: request?.device.model ?? "",
+    additionalInfo: "",
     performedActions: collectServiceRequestActions(request),
     amount,
     amountInWords: amountToPolishWords(amount),

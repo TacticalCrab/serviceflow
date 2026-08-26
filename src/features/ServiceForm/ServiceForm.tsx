@@ -7,6 +7,7 @@ import { CalendarIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react"
 import { DefaultValueInput } from "@/components/DefaultValueInput"
 import { DeviceProducerInput } from "@/components/DeviceProducerInput"
 import { ServiceStepInput } from "@/components/ServiceStepInput"
+import { TimeInput } from "@/components/TimeInput"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -284,21 +285,20 @@ function ServiceForm({
                         invalid={isInvalid}
                         placeholder="Wybierz datę"
                       />
-                      <Input
+                      <TimeInput
                         id={`${field.name}-time`}
-                        type="time"
                         value={format(field.state.value, "HH:mm")}
                         onBlur={field.handleBlur}
-                        onChange={(event) => {
-                          const [hours, minutes] = event.target.value.split(":").map(Number)
+                        onValueChange={(time) => {
+                          if (!time) return
+                          const [hours, minutes] = time.split(":").map(Number)
                           if (Number.isNaN(hours) || Number.isNaN(minutes)) return
 
                           const nextDate = new Date(field.state.value)
                           nextDate.setHours(hours, minutes, 0, 0)
                           field.handleChange(nextDate)
                         }}
-                        aria-label="Godzina utworzenia"
-                        aria-invalid={isInvalid}
+                        invalid={isInvalid}
                       />
                     </div>
                     <FieldDescription>
@@ -651,15 +651,12 @@ function ServiceForm({
                                     {(timeField) => (
                                       <Field>
                                         <FieldLabel htmlFor={timeField.name}>Godzina</FieldLabel>
-                                        <Input
+                                        <TimeInput
                                           id={timeField.name}
                                           name={timeField.name}
-                                          type="time"
                                           value={timeField.state.value ?? ""}
                                           onBlur={timeField.handleBlur}
-                                          onChange={(event) =>
-                                            timeField.handleChange(optionalText(event.target.value))
-                                          }
+                                          onValueChange={timeField.handleChange}
                                         />
                                       </Field>
                                     )}
@@ -672,15 +669,12 @@ function ServiceForm({
                                       {(timeField) => (
                                         <Field>
                                           <FieldLabel htmlFor={timeField.name}>Od</FieldLabel>
-                                          <Input
+                                          <TimeInput
                                             id={timeField.name}
                                             name={timeField.name}
-                                            type="time"
                                             value={timeField.state.value ?? ""}
                                             onBlur={timeField.handleBlur}
-                                            onChange={(event) =>
-                                              timeField.handleChange(optionalText(event.target.value))
-                                            }
+                                            onValueChange={timeField.handleChange}
                                           />
                                         </Field>
                                       )}
@@ -689,15 +683,12 @@ function ServiceForm({
                                       {(timeField) => (
                                         <Field>
                                           <FieldLabel htmlFor={timeField.name}>Do</FieldLabel>
-                                          <Input
+                                          <TimeInput
                                             id={timeField.name}
                                             name={timeField.name}
-                                            type="time"
                                             value={timeField.state.value ?? ""}
                                             onBlur={timeField.handleBlur}
-                                            onChange={(event) =>
-                                              timeField.handleChange(optionalText(event.target.value))
-                                            }
+                                            onValueChange={timeField.handleChange}
                                           />
                                         </Field>
                                       )}
@@ -848,15 +839,12 @@ function ServiceForm({
                                     {(timeField) => (
                                       <Field>
                                         <FieldLabel htmlFor={timeField.name}>Godzina</FieldLabel>
-                                        <Input
+                                        <TimeInput
                                           id={timeField.name}
                                           name={timeField.name}
-                                          type="time"
                                           value={timeField.state.value ?? ""}
                                           onBlur={timeField.handleBlur}
-                                          onChange={(event) =>
-                                            timeField.handleChange(optionalText(event.target.value))
-                                          }
+                                          onValueChange={timeField.handleChange}
                                         />
                                       </Field>
                                     )}
@@ -869,15 +857,12 @@ function ServiceForm({
                                       {(timeField) => (
                                         <Field>
                                           <FieldLabel htmlFor={timeField.name}>Od</FieldLabel>
-                                          <Input
+                                          <TimeInput
                                             id={timeField.name}
                                             name={timeField.name}
-                                            type="time"
                                             value={timeField.state.value ?? ""}
                                             onBlur={timeField.handleBlur}
-                                            onChange={(event) =>
-                                              timeField.handleChange(optionalText(event.target.value))
-                                            }
+                                            onValueChange={timeField.handleChange}
                                           />
                                         </Field>
                                       )}
@@ -886,15 +871,12 @@ function ServiceForm({
                                       {(timeField) => (
                                         <Field>
                                           <FieldLabel htmlFor={timeField.name}>Do</FieldLabel>
-                                          <Input
+                                          <TimeInput
                                             id={timeField.name}
                                             name={timeField.name}
-                                            type="time"
                                             value={timeField.state.value ?? ""}
                                             onBlur={timeField.handleBlur}
-                                            onChange={(event) =>
-                                              timeField.handleChange(optionalText(event.target.value))
-                                            }
+                                            onValueChange={timeField.handleChange}
                                           />
                                         </Field>
                                       )}
