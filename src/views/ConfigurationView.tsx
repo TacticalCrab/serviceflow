@@ -74,6 +74,11 @@ import {
   serviceStatusLabels,
 } from "@/features/ServiceRequests/status"
 import { saveStatusOrder, useStatusOrder } from "@/features/ServiceRequests/statusOrder"
+import {
+  repairsPerPageOptions,
+  saveRepairsPerPage,
+  useRepairsPerPage,
+} from "@/features/ServiceRequests/pagination"
 import { defaultRepairsTableColumnOrder, REPAIRS_TABLE_COLUMNS, saveRepairsTableColumnOrder, useRepairsTableColumnOrder, type RepairsTableColumn } from "@/features/ServiceRequests/tableColumnOrder"
 import { cn } from "@/lib/utils"
 
@@ -168,6 +173,7 @@ function ConfigurationView() {
   const configuredFontSize = useAppFontSize()
   const configuredInputCapitalization = useInputCapitalization()
   const configuredColumnOrder = useRepairsTableColumnOrder()
+  const configuredRepairsPerPage = useRepairsPerPage()
   const [order, setOrder] = useState(configuredOrder)
   const [producers, setProducers] = useState(configuredProducers)
   const [producerOrder, setProducerOrder] = useState<DeviceProducerOrder>(configuredProducerOrder)
@@ -177,12 +183,14 @@ function ConfigurationView() {
   const [fontSize, setFontSize] = useState(configuredFontSize)
   const [inputCapitalization, setInputCapitalization] = useState(configuredInputCapitalization)
   const [columnOrder, setColumnOrder] = useState(configuredColumnOrder)
+  const [repairsPerPage, setRepairsPerPage] = useState(configuredRepairsPerPage)
   const [activeColumn, setActiveColumn] = useState<RepairsTableColumn | null>(null)
   const [saving, setSaving] = useState(false)
   const [savingProducers, setSavingProducers] = useState(false)
   const [savingSteps, setSavingSteps] = useState(false)
   const [savingFontSize, setSavingFontSize] = useState(false)
   const [savingInputCapitalization, setSavingInputCapitalization] = useState(false)
+  const [savingRepairsPerPage, setSavingRepairsPerPage] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const statusDirty = order.some((status, index) => status !== configuredOrder[index])
@@ -197,6 +205,7 @@ function ConfigurationView() {
   const fontSizeDirty = fontSize !== configuredFontSize
   const inputCapitalizationDirty = inputCapitalization !== configuredInputCapitalization
   const columnOrderDirty = JSON.stringify(columnOrder) !== JSON.stringify(configuredColumnOrder)
+  const repairsPerPageDirty = repairsPerPage !== configuredRepairsPerPage
   const columnOrderIsDefault =
     JSON.stringify(columnOrder) === JSON.stringify(defaultRepairsTableColumnOrder)
   const sensors = useSensors(
@@ -227,6 +236,7 @@ function ConfigurationView() {
     setInputCapitalization(configuredInputCapitalization)
   }, [configuredInputCapitalization])
   useEffect(() => { setColumnOrder(configuredColumnOrder) }, [configuredColumnOrder])
+  useEffect(() => { setRepairsPerPage(configuredRepairsPerPage) }, [configuredRepairsPerPage])
 
   function handleDragEnd({ active, over }: DragEndEvent) {
     if (!over || active.id === over.id) return
@@ -396,6 +406,26 @@ function ConfigurationView() {
     }
   }
 
+  async function handleSaveRepairsPerPage() {
+    setSavingRepairsPerPage(true)
+    setError(null)
+    setSaved(false)
+
+    try {
+      const savedValue = await saveRepairsPerPage(repairsPerPage)
+      setRepairsPerPage(savedValue)
+      setSaved(true)
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Nie udało się zapisać liczby zleceń na stronie."
+      )
+    } finally {
+      setSavingRepairsPerPage(false)
+    }
+  }
+
   return (
     <section className="space-y-6">
       <header>
@@ -491,6 +521,49 @@ function ConfigurationView() {
                   {savingInputCapitalization ? "Zapisywanie…" : "Zapisz ustawienie"}
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="order-5">
+          <CardHeader className="p-4 pb-0">
+            <CardTitle className="text-base">Paginacja listy napraw</CardTitle>
+            <CardDescription>
+              Wybierz, ile zleceń ma być widocznych na jednej stronie listy napraw.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 p-4">
+            <Select
+              value={String(repairsPerPage)}
+              onValueChange={(value) => {
+                setSaved(false)
+                setRepairsPerPage(Number(value))
+              }}
+            >
+              <SelectTrigger className="h-10 w-full sm:max-w-md" aria-label="Liczba zleceń na stronie">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent align="start" alignItemWithTrigger={false}>
+                <SelectGroup>
+                  {repairsPerPageOptions.map((option) => (
+                    <SelectItem key={option} value={String(option)}>
+                      {option === 15 ? `${option} zleceń (domyślnie)` : `${option} zleceń`}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {repairsPerPageDirty && (
+              <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+                <CircleAlertIcon className="size-4 shrink-0" />
+                Zmieniono liczbę zleceń na stronie. Zapisz tę sekcję.
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button type="button" size="sm" onClick={() => void handleSaveRepairsPerPage()} disabled={savingRepairsPerPage || !repairsPerPageDirty}>
+                {savingRepairsPerPage && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
+                {savingRepairsPerPage ? "Zapisywanie…" : "Zapisz ustawienie"}
+              </Button>
             </div>
           </CardContent>
         </Card>

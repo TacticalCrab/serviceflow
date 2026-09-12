@@ -69,6 +69,7 @@ import {
 import { useOrderedServiceStatuses } from "@/features/ServiceRequests/statusOrder"
 import { finalPrice, totalAdditionalExpenses } from "@/features/ServiceRequests/pricing"
 import { useRepairsTableColumnOrder } from "@/features/ServiceRequests/tableColumnOrder"
+import { useRepairsPerPage } from "@/features/ServiceRequests/pagination"
 import { cn } from "@/lib/utils"
 import { formatPhoneNumber } from "@/lib/phone"
 import { isRequestPinned, PINNED_REQUESTS_CHANGED_EVENT, setRequestPinned } from "@/features/ServiceRequests/pinnedRequests"
@@ -126,7 +127,6 @@ const TABLE_SORT_STORAGE_KEY = "cafe-service.repairs-table-sort"
 const VIEW_PRESET_STORAGE_KEY = "cafe-service.repairs-table-view-preset"
 const VIEW_PRESET_COLUMNS_STORAGE_KEY = "cafe-service.repairs-table-view-preset-columns"
 const SEARCH_QUERY_STORAGE_KEY = "cafe-service.repairs-search-query"
-const REPAIRS_PER_PAGE = 15
 
 const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   customer: true,
@@ -502,6 +502,7 @@ function requestMatchesSearch(request: ServiceRequest, query: string) {
 }
 
 function RepairsView() {
+  const repairsPerPage = useRepairsPerPage()
   const location = useLocation()
   const [initialPreset] = useState<ViewPreset | null>(loadViewPreset)
   const [requests, setRequests] = useState<ServiceRequest[]>([])
@@ -609,16 +610,16 @@ function RepairsView() {
       return sortDirection === "asc" ? comparison : -comparison
     })
   }, [filteredRequests, orderedStatusOptions, sortColumn, sortDirection])
-  const pageCount = Math.max(1, Math.ceil(sortedRequests.length / REPAIRS_PER_PAGE))
+  const pageCount = Math.max(1, Math.ceil(sortedRequests.length / repairsPerPage))
   const activePage = Math.min(currentPage, pageCount)
   const paginatedRequests = useMemo(() => {
-    const start = (activePage - 1) * REPAIRS_PER_PAGE
-    return sortedRequests.slice(start, start + REPAIRS_PER_PAGE)
-  }, [activePage, sortedRequests])
+    const start = (activePage - 1) * repairsPerPage
+    return sortedRequests.slice(start, start + repairsPerPage)
+  }, [activePage, repairsPerPage, sortedRequests])
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [debouncedSearchQuery, statusFilter, sortColumn, sortDirection])
+  }, [debouncedSearchQuery, repairsPerPage, statusFilter, sortColumn, sortDirection])
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, pageCount))
@@ -1190,7 +1191,7 @@ function RepairsView() {
             {pageCount > 1 && (
               <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-muted-foreground">
-                  Wyświetlono {(activePage - 1) * REPAIRS_PER_PAGE + 1}–{Math.min(activePage * REPAIRS_PER_PAGE, sortedRequests.length)} z {sortedRequests.length} zleceń
+                  Wyświetlono {(activePage - 1) * repairsPerPage + 1}–{Math.min(activePage * repairsPerPage, sortedRequests.length)} z {sortedRequests.length} zleceń
                 </p>
                 <div className="flex items-center gap-2">
                   <Button
