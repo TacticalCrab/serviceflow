@@ -58,7 +58,10 @@ import {
 import {
   normalizeDeviceProducers,
   saveDeviceProducers,
+  sortDeviceProducers,
+  useDeviceProducerOrder,
   useDeviceProducers,
+  type DeviceProducerOrder,
 } from "@/features/DeviceProducers/producers"
 import {
   normalizeServiceSteps,
@@ -113,15 +116,61 @@ function SortableTableColumn({ column }: { column: readonly [RepairsTableColumn,
   </li>
 }
 
+function SortableProducer({
+  producer,
+  index,
+  onValueChange,
+  onRemove,
+}: {
+  producer: string
+  index: number
+  onValueChange: (value: string) => void
+  onRemove: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: producer,
+  })
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(
+        "flex items-center gap-2 bg-background p-2",
+        isDragging && "z-10 rounded-lg border bg-muted shadow-sm opacity-90"
+      )}
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="-ml-1 cursor-grab text-muted-foreground active:cursor-grabbing"
+        aria-label={`Przeciągnij producenta ${producer}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVerticalIcon />
+      </Button>
+      <span className="w-4 text-xs tabular-nums text-muted-foreground">{index + 1}</span>
+      <Input value={producer} onChange={(event) => onValueChange(event.target.value)} aria-label={`Producent ${index + 1}`} />
+      <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label={`Usuń producenta ${producer}`}>
+        <Trash2Icon />
+      </Button>
+    </li>
+  )
+}
+
 function ConfigurationView() {
   const configuredOrder = useStatusOrder()
   const configuredProducers = useDeviceProducers()
+  const configuredProducerOrder = useDeviceProducerOrder()
   const configuredSteps = useServiceSteps()
   const configuredFontSize = useAppFontSize()
   const configuredInputCapitalization = useInputCapitalization()
   const configuredColumnOrder = useRepairsTableColumnOrder()
   const [order, setOrder] = useState(configuredOrder)
   const [producers, setProducers] = useState(configuredProducers)
+  const [producerOrder, setProducerOrder] = useState<DeviceProducerOrder>(configuredProducerOrder)
   const [steps, setSteps] = useState(configuredSteps)
   const [newProducer, setNewProducer] = useState("")
   const [newStep, setNewStep] = useState("")
@@ -140,6 +189,8 @@ function ConfigurationView() {
   const producersDirty =
     JSON.stringify(normalizeDeviceProducers(producers)) !==
     JSON.stringify(normalizeDeviceProducers(configuredProducers))
+  const producerOrderDirty = producerOrder !== configuredProducerOrder
+  const producerSettingsDirty = producersDirty || producerOrderDirty
   const stepsDirty =
     JSON.stringify(normalizeServiceSteps(steps)) !==
     JSON.stringify(normalizeServiceSteps(configuredSteps))
@@ -162,6 +213,10 @@ function ConfigurationView() {
   }, [configuredProducers])
 
   useEffect(() => {
+    setProducerOrder(configuredProducerOrder)
+  }, [configuredProducerOrder])
+
+  useEffect(() => {
     setSteps(configuredSteps)
   }, [configuredSteps])
 
@@ -180,6 +235,19 @@ function ConfigurationView() {
     setOrder((current) => {
       const sourceIndex = current.indexOf(active.id as ServiceStatus)
       const targetIndex = current.indexOf(over.id as ServiceStatus)
+      return sourceIndex < 0 || targetIndex < 0
+        ? current
+        : arrayMove(current, sourceIndex, targetIndex)
+    })
+  }
+
+  function handleProducerDragEnd({ active, over }: DragEndEvent) {
+    if (!over || active.id === over.id) return
+
+    setSaved(false)
+    setProducers((current) => {
+      const sourceIndex = current.indexOf(active.id as string)
+      const targetIndex = current.indexOf(over.id as string)
       return sourceIndex < 0 || targetIndex < 0
         ? current
         : arrayMove(current, sourceIndex, targetIndex)
@@ -233,13 +301,19 @@ function ConfigurationView() {
     setNewProducer("")
   }
 
+  function changeProducerOrder(order: DeviceProducerOrder) {
+    setSaved(false)
+    setProducerOrder(order)
+    if (order === "alphabetical") setProducers((current) => sortDeviceProducers(current))
+  }
+
   async function handleSaveProducers() {
     setSavingProducers(true)
     setError(null)
     setSaved(false)
 
     try {
-      const savedProducers = await saveDeviceProducers(producers)
+      const savedProducers = await saveDeviceProducers(producers, producerOrder)
       setProducers(savedProducers)
       setSaved(true)
     } catch (saveError) {
@@ -461,6 +535,34 @@ function ConfigurationView() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+            <div>
+              <p className="text-sm font-medium">Kolejność na liście</p>
+              <p className="text-xs text-muted-foreground">
+                {producerOrder === "alphabetical"
+                  ? "Producenci są wyświetlani alfabetycznie."
+                  : "Przeciągnij producenta, aby ustawić własną kolejność."}
+              </p>
+            </div>
+            <Select
+              items={[
+                { value: "alphabetical", label: "Alfabetyczna" },
+                { value: "custom", label: "Własna" },
+              ]}
+              value={producerOrder}
+              onValueChange={(value) => {
+                if (value === "alphabetical" || value === "custom") changeProducerOrder(value)
+              }}
+            >
+              <SelectTrigger className="w-36" aria-label="Kolejność producentów">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alphabetical">Alfabetyczna</SelectItem>
+                <SelectItem value="custom">Własna</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex gap-2">
             <Input
               value={newProducer}
@@ -477,50 +579,82 @@ function ConfigurationView() {
               <PlusIcon />
             </Button>
           </div>
-          <div className="divide-y overflow-hidden rounded-lg border">
+          <div className="overflow-hidden rounded-lg border">
             {producers.length ? (
-              producers.map((producer, index) => (
-                <div key={`${producer}-${index}`} className="flex items-center gap-2 p-2">
-                  <Input
-                    value={producer}
-                    onChange={(event) => {
-                      setSaved(false)
-                      setProducers((current) =>
-                        current.map((item, itemIndex) =>
-                          itemIndex === index ? event.target.value : item
-                        )
-                      )
-                    }}
-                    aria-label={`Producent ${index + 1}`}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => {
-                      setSaved(false)
-                      setProducers((current) =>
-                        current.filter((_, itemIndex) => itemIndex !== index)
-                      )
-                    }}
-                    aria-label={`Usuń producenta ${producer}`}
-                  >
-                    <Trash2Icon />
-                  </Button>
+              producerOrder === "custom" ? (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProducerDragEnd}>
+                  <SortableContext items={producers} strategy={verticalListSortingStrategy}>
+                    <ol className="divide-y">
+                      {producers.map((producer, index) => (
+                        <SortableProducer
+                          key={index}
+                          producer={producer}
+                          index={index}
+                          onValueChange={(value) => {
+                            setSaved(false)
+                            setProducers((current) =>
+                              current.map((item, itemIndex) =>
+                                itemIndex === index ? value : item
+                              )
+                            )
+                          }}
+                          onRemove={() => {
+                            setSaved(false)
+                            setProducers((current) =>
+                              current.filter((_, itemIndex) => itemIndex !== index)
+                            )
+                          }}
+                        />
+                      ))}
+                    </ol>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <div className="divide-y">
+                  {producers.map((producer, index) => (
+                    <div key={index} className="flex items-center gap-2 p-2">
+                      <Input
+                        value={producer}
+                        onChange={(event) => {
+                          setSaved(false)
+                          setProducers((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index ? event.target.value : item
+                            )
+                          )
+                        }}
+                        aria-label={`Producent ${index + 1}`}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => {
+                          setSaved(false)
+                          setProducers((current) =>
+                            current.filter((_, itemIndex) => itemIndex !== index)
+                          )
+                        }}
+                        aria-label={`Usuń producenta ${producer}`}
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))
+              )
             ) : (
               <p className="p-3 text-sm text-muted-foreground">Nie dodano producentów.</p>
             )}
           </div>
-          {producersDirty && (
+          {producerSettingsDirty && (
             <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
               <CircleAlertIcon className="size-4 shrink-0" />
-              Zmieniono producentów urządzeń. Zapisz tę sekcję.
+              Zmieniono listę lub kolejność producentów. Zapisz tę sekcję.
             </div>
           )}
           <div className="flex justify-end">
-            <Button type="button" size="sm" onClick={() => void handleSaveProducers()} disabled={savingProducers || !producersDirty}>
+            <Button type="button" size="sm" onClick={() => void handleSaveProducers()} disabled={savingProducers || !producerSettingsDirty}>
               {savingProducers && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
               {savingProducers ? "Zapisywanie…" : "Zapisz producentów"}
             </Button>
@@ -556,7 +690,7 @@ function ConfigurationView() {
           <div className="divide-y overflow-hidden rounded-lg border">
             {steps.length ? (
               steps.map((step, index) => (
-                <div key={`${step}-${index}`} className="flex items-center gap-2 p-2">
+                <div key={index} className="flex items-center gap-2 p-2">
                   <Input
                     value={step}
                     autoComplete="off"

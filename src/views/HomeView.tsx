@@ -358,15 +358,11 @@ function HomeView() {
   }, [])
 
   const stats = useMemo(() => {
-    const inProgress = requests.filter(
-      (request) =>
-        isActiveServiceStatus(request.status) &&
-        isDateInPeriod(request.createdAt, periodStart, periodEnd)
-    )
+    const inProgress = requests.filter((request) => isActiveServiceStatus(request.status))
     const completed = requests.filter(
       (request) =>
-        request.status === "closed" &&
-        isDateInPeriod(request.statusChangedAt, periodStart, periodEnd)
+        Boolean(request.endedAt) &&
+        isDateInPeriod(request.endedAt!, periodStart, periodEnd)
     )
     const revenue = completed.reduce(
       (sum, request) => sum + (finalPrice(request.costEstimate, request.additionalCosts) ?? 0),
@@ -515,14 +511,14 @@ function HomeView() {
         <StatCard
           title="W trakcie naprawy"
           value={statValue(stats.inProgress)}
-          description="Zlecenia przyjęte w wybranym okresie"
+          description="Wszystkie aktywne zlecenia"
           icon={WrenchIcon}
           to="/naprawy?preset=workshop"
         />
         <StatCard
           title="Naprawione ekspresy"
           value={statValue(stats.completed)}
-          description="Zlecenia zamknięte w wybranym okresie"
+          description="Zlecenia zakończone w wybranym okresie"
           icon={CheckCircle2Icon}
           accent="success"
           to="/naprawy?preset=financial"

@@ -34,6 +34,14 @@ fn validate_request(request: &NewServiceRequest) -> Result<(), String> {
         return Err("Data utworzenia zlecenia nie może być pusta".into());
     }
 
+    if request
+        .requested_ended_at
+        .as_deref()
+        .is_some_and(|ended_at| ended_at.trim().is_empty())
+    {
+        return Err("Pole „Zakończono” nie może być puste".into());
+    }
+
     if request.client.name.trim().is_empty() {
         return Err("Imię klienta jest wymagane".into());
     }
@@ -63,6 +71,7 @@ fn deserialize_request(
     status: String,
     created_at: String,
     status_changed_at: String,
+    ended_at: Option<String>,
     payload: String,
 ) -> Result<ServiceRequest, String> {
     let request = serde_json::from_str(&payload)
@@ -73,6 +82,7 @@ fn deserialize_request(
         status,
         created_at,
         status_changed_at,
+        ended_at,
         request,
     })
 }
@@ -80,7 +90,7 @@ fn deserialize_request(
 fn find_by_id(connection: &Connection, id: i64) -> Result<Option<ServiceRequest>, String> {
     let row = connection
         .query_row(
-            "SELECT id, status, created_at, COALESCE(status_changed_at, created_at), payload FROM service_requests WHERE id = ?1",
+            "SELECT id, status, created_at, COALESCE(status_changed_at, created_at), ended_at, payload FROM service_requests WHERE id = ?1",
             [id],
             |row| {
                 Ok((
@@ -88,15 +98,16 @@ fn find_by_id(connection: &Connection, id: i64) -> Result<Option<ServiceRequest>
                     row.get::<_, String>(1)?,
                     row.get::<_, String>(2)?,
                     row.get::<_, String>(3)?,
-                    row.get::<_, String>(4)?,
+                    row.get::<_, Option<String>>(4)?,
+                    row.get::<_, String>(5)?,
                 ))
             },
         )
         .optional()
         .map_err(|error| format!("Nie udało się pobrać zlecenia: {error}"))?;
 
-    row.map(|(id, status, created_at, status_changed_at, payload)| {
-        deserialize_request(id, status, created_at, status_changed_at, payload)
+    row.map(|(id, status, created_at, status_changed_at, ended_at, payload)| {
+        deserialize_request(id, status, created_at, status_changed_at, ended_at, payload)
     })
     .transpose()
 }
@@ -153,8 +164,12 @@ fn update_request(
                 client_phone = ?2,
                 device_name = ?3,
                 payload = ?4,
-                created_at = COALESCE(?5, created_at)
-            WHERE id = ?6
+                created_at = COALESCE(?5, created_at),
+                ended_at = CASE
+                    WHEN status IN ('closed', 'cancelled') THEN ?6
+                    ELSE NULL
+                END
+            WHERE id = ?7
             ",
             params![
                 request.client.name.trim(),
@@ -162,6 +177,7 @@ fn update_request(
                 request.device.name.trim(),
                 payload,
                 request.requested_created_at.as_deref(),
+                request.requested_ended_at.as_deref(),
                 id,
             ],
         )
@@ -192,7 +208,11 @@ fn update_request_status(
             "
             UPDATE service_requests
             SET status = ?1,
-                status_changed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                status_changed_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                ended_at = CASE
+                    WHEN ?1 IN ('closed', 'cancelled') THEN strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+                    ELSE NULL
+                END
             WHERE id = ?2
             ",
             params![status, id],
@@ -222,7 +242,7 @@ fn find_all(connection: &Connection) -> Result<Vec<ServiceRequest>, String> {
     let mut statement = connection
         .prepare(
             "
-            SELECT id, status, created_at, COALESCE(status_changed_at, created_at), payload
+            SELECT id, status, created_at, COALESCE(status_changed_at, created_at), ended_at, payload
             FROM service_requests
             ORDER BY created_at DESC, id DESC
             ",
@@ -235,20 +255,22 @@ fn find_all(connection: &Connection) -> Result<Vec<ServiceRequest>, String> {
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
-                row.get::<_, String>(4)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, String>(5)?,
             ))
         })
         .map_err(|error| format!("Nie udało się pobrać listy zleceń: {error}"))?;
 
     let mut requests = Vec::new();
     for row in rows {
-        let (id, status, created_at, status_changed_at, payload) =
+        let (id, status, created_at, status_changed_at, ended_at, payload) =
             row.map_err(|error| format!("Nie udało się odczytać zlecenia: {error}"))?;
         requests.push(deserialize_request(
             id,
             status,
             created_at,
             status_changed_at,
+            ended_at,
             payload,
         )?);
     }
@@ -679,6 +701,7 @@ mod tests {
     fn sample_request() -> NewServiceRequest {
         NewServiceRequest {
             requested_created_at: None,
+            requested_ended_at: None,
             client: Client {
                 name: "Anna".into(),
                 surname: Some("Nowak".into()),
@@ -756,14 +779,30 @@ mod tests {
 
         let closed = close_request(&connection, created.id).expect("request should close");
         assert_eq!(closed.status, "closed");
+        assert!(closed.ended_at.is_some());
 
         let reopened = reopen_request(&connection, created.id).expect("request should reopen");
         assert_eq!(reopened.status, "in_repair");
+        assert_eq!(reopened.ended_at, None);
 
         let waiting = update_request_status(&connection, created.id, "waiting_for_parts")
             .expect("request status should update");
         assert_eq!(waiting.status, "waiting_for_parts");
         assert!(update_request_status(&connection, created.id, "unknown").is_err());
+
+        let cancelled = update_request_status(&connection, created.id, "cancelled")
+            .expect("request should cancel");
+        assert_eq!(cancelled.status, "cancelled");
+        assert!(cancelled.ended_at.is_some());
+
+        let mut corrected_end_date = sample_request();
+        corrected_end_date.requested_ended_at = Some("2026-09-12T10:30:00.000Z".into());
+        let corrected = update_request(&connection, created.id, corrected_end_date)
+            .expect("end date should update");
+        assert_eq!(
+            corrected.ended_at.as_deref(),
+            Some("2026-09-12T10:30:00.000Z")
+        );
 
         delete_request(&connection, created.id).expect("request should delete");
         assert!(find_all(&connection)

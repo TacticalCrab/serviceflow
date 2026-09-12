@@ -94,6 +94,7 @@ type TableColumnId =
   | "invoice"
   | "createdAt"
   | "statusChangedAt"
+  | "endedAt"
 type SortColumn = "id" | TableColumnId
 type ViewPreset = "compact" | "schedule" | "financial" | "intake" | "workshop" | "parts" | "returns"
 
@@ -116,12 +117,14 @@ const tableColumnOptions: Array<{ id: TableColumnId; label: string }> = [
   { id: "invoice", label: "Faktura" },
   { id: "createdAt", label: "Data utworzenia" },
   { id: "statusChangedAt", label: "Zmiana statusu" },
+  { id: "endedAt", label: "Zakończono" },
 ]
 
 const COLUMN_VISIBILITY_STORAGE_KEY = "cafe-service.repairs-table-columns-v2"
 const STATUS_FILTER_STORAGE_KEY = "cafe-service.repairs-status-filter"
 const TABLE_SORT_STORAGE_KEY = "cafe-service.repairs-table-sort"
 const VIEW_PRESET_STORAGE_KEY = "cafe-service.repairs-table-view-preset"
+const VIEW_PRESET_COLUMNS_STORAGE_KEY = "cafe-service.repairs-table-view-preset-columns"
 const SEARCH_QUERY_STORAGE_KEY = "cafe-service.repairs-search-query"
 const REPAIRS_PER_PAGE = 15
 
@@ -144,6 +147,7 @@ const defaultColumnVisibility: Record<TableColumnId, boolean> = {
   invoice: false,
   createdAt: false,
   statusChangedAt: false,
+  endedAt: true,
 }
 
 const viewPresetColumns: Record<ViewPreset, TableColumnId[]> = {
@@ -193,11 +197,40 @@ function loadViewPreset(): ViewPreset | null {
 }
 
 function columnVisibilityForPreset(preset: ViewPreset): Record<TableColumnId, boolean> {
-  const presetColumns = viewPresetColumns[preset]
+  const presetColumns = loadPresetColumns()[preset] ?? viewPresetColumns[preset]
   return tableColumnOptions.reduce(
     (columns, column) => ({ ...columns, [column.id]: presetColumns.includes(column.id) }),
     {} as Record<TableColumnId, boolean>
   )
+}
+
+function loadPresetColumns(): Partial<Record<ViewPreset, TableColumnId[]>> {
+  try {
+    const savedValue = window.localStorage.getItem(VIEW_PRESET_COLUMNS_STORAGE_KEY)
+    if (!savedValue) return {}
+
+    const savedPresets = JSON.parse(savedValue) as Partial<Record<ViewPreset, unknown>>
+    return Object.entries(savedPresets).reduce((presets, [preset, columns]) => {
+      if (!isViewPreset(preset) || !Array.isArray(columns)) return presets
+
+      const validColumns = columns.filter(
+        (column): column is TableColumnId =>
+          typeof column === "string" && tableColumnOptions.some((option) => option.id === column)
+      )
+      presets[preset] = [...new Set(validColumns)]
+      return presets
+    }, {} as Partial<Record<ViewPreset, TableColumnId[]>>)
+  } catch {
+    return {}
+  }
+}
+
+function savePresetColumns(preset: ViewPreset, visibility: Record<TableColumnId, boolean>) {
+  const savedPresets = loadPresetColumns()
+  savedPresets[preset] = tableColumnOptions
+    .filter((column) => visibility[column.id])
+    .map((column) => column.id)
+  window.localStorage.setItem(VIEW_PRESET_COLUMNS_STORAGE_KEY, JSON.stringify(savedPresets))
 }
 
 function loadColumnVisibility(): Record<TableColumnId, boolean> {
@@ -306,7 +339,7 @@ function TransportCell({
     <div className="min-w-36 leading-snug">
       <div className="font-medium text-foreground">{transport.label}</div>
       {transport.date && (
-        <div className="mt-1 text-xs text-muted-foreground">
+        <div className="mt-1 text-sm text-muted-foreground">
           {format(transport.date, "d MMM yyyy", { locale: pl })}
         </div>
       )}
@@ -365,6 +398,8 @@ function sortableValue(
       return request.createdAt
     case "statusChangedAt":
       return request.statusChangedAt
+    case "endedAt":
+      return request.endedAt ?? ""
   }
 }
 
@@ -448,6 +483,7 @@ function requestMatchesSearch(request: ServiceRequest, query: string) {
     ...(request.additionalCosts?.flatMap((cost) => [cost.description, cost.price]) ?? []),
     searchableDate(request.createdAt),
     searchableDate(request.statusChangedAt),
+    searchableDate(request.endedAt),
     serviceStatusLabels[request.status],
     preferences?.checkIn?.method === "servicePickup"
       ? "odbiór od klienta serwis odbiera"
@@ -493,9 +529,7 @@ function RepairsView() {
     initialPreset ? columnVisibilityForPreset(initialPreset) : loadColumnVisibility()
   )
   const persistedColumnOrder = useRepairsTableColumnOrder()
-  const columnOrder = temporaryPreset
-    ? [...viewPresetColumns[temporaryPreset], ...persistedColumnOrder.filter((column) => !viewPresetColumns[temporaryPreset].includes(column))]
-    : persistedColumnOrder
+  const columnOrder = persistedColumnOrder
   const [updatingStatusIds, setUpdatingStatusIds] = useState<Set<number>>(
     () => new Set()
   )
@@ -621,6 +655,11 @@ function RepairsView() {
   }, [temporaryPreset, visibleColumns])
 
   useEffect(() => {
+    if (!temporaryPreset) return
+    savePresetColumns(temporaryPreset, visibleColumns)
+  }, [temporaryPreset, visibleColumns])
+
+  useEffect(() => {
     if (temporaryPreset) {
       window.localStorage.setItem(VIEW_PRESET_STORAGE_KEY, temporaryPreset)
     } else {
@@ -698,6 +737,20 @@ function RepairsView() {
     setVisibleColumns((current) => ({ ...current, [column]: visible }))
   }
 
+  function restoreDefaultColumns() {
+    setVisibleColumns(
+      temporaryPreset
+        ? tableColumnOptions.reduce(
+            (columns, column) => ({
+              ...columns,
+              [column.id]: viewPresetColumns[temporaryPreset].includes(column.id),
+            }),
+            {} as Record<TableColumnId, boolean>
+          )
+        : defaultColumnVisibility
+    )
+  }
+
   function applyViewPreset(preset: ViewPreset) {
     setTemporaryPreset(preset)
     setVisibleColumns(columnVisibilityForPreset(preset))
@@ -730,9 +783,9 @@ function RepairsView() {
   function renderTableCell(request: ServiceRequest, column: TableColumnId) {
     switch (column) {
       case "status": return <td key={column} className="px-4 py-3" onClick={(event) => event.stopPropagation()}><StatusSelect value={request.status} onValueChange={(status) => void handleStatusChange(request, status)} disabled={updatingStatusIds.has(request.id)} compact className="h-7 text-xs" aria-label={`Status zlecenia #${request.id}`} /></td>
-      case "customer": return <td key={column} className="px-4 py-3"><div className="font-medium">{request.client.name} {request.client.surname}</div>{!visibleColumns.phone && request.client.phone && <div className="text-xs text-muted-foreground">{formatPhoneNumber(request.client.phone)}</div>}</td>
-      case "phone": return <td key={column} className="whitespace-nowrap px-4 py-3">{request.client.phone ? formatPhoneNumber(request.client.phone) : "—"}</td>
-      case "device": return <td key={column} className="px-4 py-3"><div className="font-medium">{request.device.name}</div><div className="text-xs text-muted-foreground">{[request.device.manufacturer, request.device.model, request.device.serialNumber ? `S/N: ${request.device.serialNumber}` : undefined].filter(Boolean).join(" · ")}</div></td>
+      case "customer": return <td key={column} className="whitespace-nowrap px-4 py-3"><div className="font-medium">{request.client.name} {request.client.surname}</div>{!visibleColumns.phone && request.client.phone && <div className="mt-0.5 text-sm font-medium text-muted-foreground">{formatPhoneNumber(request.client.phone)}</div>}</td>
+      case "phone": return <td key={column} className="whitespace-nowrap px-4 py-3 font-medium text-muted-foreground">{request.client.phone ? formatPhoneNumber(request.client.phone) : "—"}</td>
+      case "device": return <td key={column} className="px-4 py-3"><div className="font-medium">{request.device.name}</div><div className="mt-0.5 text-sm font-medium text-muted-foreground">{[request.device.manufacturer, request.device.model, request.device.serialNumber ? `S/N: ${request.device.serialNumber}` : undefined].filter(Boolean).join(" · ")}</div></td>
       case "manufacturer": return <td key={column} className="px-4 py-3">{request.device.manufacturer ?? "—"}</td>
       case "model": return <td key={column} className="px-4 py-3">{request.device.model ?? "—"}</td>
       case "serialNumber": return <td key={column} className="whitespace-nowrap px-4 py-3 font-mono text-xs">{request.device.serialNumber ?? "—"}</td>
@@ -750,6 +803,7 @@ function RepairsView() {
       case "invoice": return <td key={column} className="px-4 py-3">{request.client.preferences?.invoice ? "Tak" : "—"}</td>
       case "createdAt": return <td key={column} className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCreatedAt(request.createdAt)}</td>
       case "statusChangedAt": return <td key={column} className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatCreatedAt(request.statusChangedAt)}</td>
+      case "endedAt": return <td key={column} className="whitespace-nowrap px-4 py-3 text-muted-foreground">{request.endedAt ? formatCreatedAt(request.endedAt) : "—"}</td>
     }
   }
 
@@ -881,7 +935,13 @@ function RepairsView() {
               <SlidersHorizontalIcon />
             </PopoverTrigger>
             <PopoverContent align="end" className="max-h-96 w-64 overflow-y-auto p-3">
-              <p className="px-1 pb-2 text-sm font-medium">Widoczne kolumny</p>
+              <p className="px-1 text-sm font-medium">Widoczne kolumny</p>
+              {temporaryPreset && (
+                <p className="px-1 pb-2 text-xs text-muted-foreground">
+                  Zmiany są zapisywane dla wybranego presetu.
+                </p>
+              )}
+              {!temporaryPreset && <div className="pb-2" />}
               <div className="grid gap-2">
                 {tableColumnOptions.map((column) => (
                   <label key={column.id} className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 hover:bg-muted">
@@ -898,9 +958,9 @@ function RepairsView() {
                 variant="ghost"
                 size="sm"
                 className="mt-2 w-full"
-                onClick={() => setVisibleColumns(defaultColumnVisibility)}
+                onClick={restoreDefaultColumns}
               >
-                Przywróć domyślne
+                {temporaryPreset ? "Przywróć domyślne presetu" : "Przywróć domyślne"}
               </Button>
             </PopoverContent>
           </Popover>
@@ -974,7 +1034,7 @@ function RepairsView() {
           ) : (
             <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px] text-left text-sm">
+              <table className="w-full min-w-275 text-left text-sm">
                 <thead className="border-y bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3" aria-sort={sortColumn === "id" && sortDirection ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>

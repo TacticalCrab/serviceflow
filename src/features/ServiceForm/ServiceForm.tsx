@@ -59,6 +59,7 @@ type ServiceFormProps = {
 function createDefaultValues(values?: FormSchema): FormSchema {
   return {
     requestedCreatedAt: values?.requestedCreatedAt ?? new Date(),
+    requestedEndedAt: values?.requestedEndedAt,
     client: {
       name: values?.client.name ?? "",
       surname: values?.client.surname,
@@ -243,7 +244,11 @@ function ServiceForm({
       noValidate
       autoComplete="off"
       onKeyDownCapture={(event) => {
-        if (event.key === "Enter" && event.target instanceof HTMLInputElement) {
+        if (
+          event.key === "Enter" &&
+          event.target instanceof HTMLInputElement &&
+          event.target.dataset.suggestionInput !== "true"
+        ) {
           event.preventDefault()
         }
       }}
@@ -303,6 +308,46 @@ function ServiceForm({
                     </div>
                     <FieldDescription>
                       Domyślnie ustawiany jest bieżący moment. Możesz go skorygować.
+                    </FieldDescription>
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
+            </form.Field>
+            <form.Field name="requestedEndedAt">
+              {(field) => {
+                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field className="mt-4 max-w-sm" data-invalid={isInvalid}>
+                    <FieldLabel htmlFor={field.name}>Zakończono</FieldLabel>
+                    <div className="grid grid-cols-2 gap-3">
+                      <DatePicker
+                        id={field.name}
+                        value={field.state.value}
+                        onChange={(date) => field.handleChange(date)}
+                        onBlur={field.handleBlur}
+                        invalid={isInvalid}
+                        placeholder="Wybierz datę"
+                      />
+                      <TimeInput
+                        id={`${field.name}-time`}
+                        value={field.state.value ? format(field.state.value, "HH:mm") : ""}
+                        onBlur={field.handleBlur}
+                        onValueChange={(time) => {
+                          if (!time || !field.state.value) return
+                          const [hours, minutes] = time.split(":").map(Number)
+                          if (Number.isNaN(hours) || Number.isNaN(minutes)) return
+
+                          const nextDate = new Date(field.state.value)
+                          nextDate.setHours(hours, minutes, 0, 0)
+                          field.handleChange(nextDate)
+                        }}
+                        invalid={isInvalid}
+                      />
+                    </div>
+                    <FieldDescription>
+                      Ustawiana automatycznie po ustawieniu końcowego statusu. Możesz ją skorygować.
                     </FieldDescription>
                     {isInvalid && <FieldError errors={field.state.meta.errors} />}
                   </Field>

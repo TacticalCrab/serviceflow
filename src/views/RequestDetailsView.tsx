@@ -547,6 +547,11 @@ function RequestDetailsView() {
             <p className="mt-1 text-sm text-muted-foreground">
               Utworzono {formatDate(request.createdAt, true)}
             </p>
+            {request.endedAt && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Zakończono {formatDate(request.endedAt, true)}
+              </p>
+            )}
           </div>
         </div>
 

@@ -7,7 +7,7 @@ const REPAIRS_TABLE_COLUMNS = [
   ["repairTime", "Czas naprawy"], ["estimate", "Kwota końcowa"],
   ["additionalCosts", "Wydatki"], ["profit", "Zysk"], ["checkIn", "Przyjęcie"], ["checkOut", "Zwrot"],
   ["repairCard", "Karta naprawy"], ["invoice", "Faktura"],
-  ["createdAt", "Utworzono"], ["statusChangedAt", "Zmiana statusu"],
+  ["createdAt", "Utworzono"], ["statusChangedAt", "Zmiana statusu"], ["endedAt", "Zakończono"],
 ] as const
 
 type RepairsTableColumn = (typeof REPAIRS_TABLE_COLUMNS)[number][0]

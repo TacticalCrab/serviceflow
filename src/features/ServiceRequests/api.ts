@@ -26,6 +26,7 @@ type ServiceRequest = ServiceRequestPayload & {
   status: ServiceStatus
   createdAt: string
   statusChangedAt: string
+  endedAt?: string
 }
 
 function serializeFormValues(values: FormSchema): ServiceRequestPayload {
@@ -44,6 +45,7 @@ function serviceRequestToFormValues(request: ServiceRequest): FormSchema {
 
   return {
     requestedCreatedAt: parseDate(request.createdAt) ?? new Date(),
+    requestedEndedAt: parseDate(request.endedAt),
     client: {
       name: request.client.name,
       surname: request.client.surname ?? undefined,

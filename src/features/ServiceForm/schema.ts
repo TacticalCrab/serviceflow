@@ -20,6 +20,7 @@ const checkOutSchema = z.object({
 
 const formSchema = z.object({
     requestedCreatedAt: z.date(),
+    requestedEndedAt: z.date().optional(),
     client: z.object({
         name: z.string().min(1, "Imię jest wymagane"),
         surname: z.string().optional(),

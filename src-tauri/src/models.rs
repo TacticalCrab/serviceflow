@@ -137,6 +137,8 @@ pub struct AdditionalCost {
 pub struct NewServiceRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub requested_created_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub requested_ended_at: Option<String>,
     pub client: Client,
     pub device: Device,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -158,6 +160,8 @@ pub struct ServiceRequest {
     pub status: String,
     pub created_at: String,
     pub status_changed_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ended_at: Option<String>,
     #[serde(flatten)]
     pub request: NewServiceRequest,
 }

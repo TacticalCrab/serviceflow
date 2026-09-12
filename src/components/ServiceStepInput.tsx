@@ -15,6 +15,7 @@ function ServiceStepInput({
       options={useServiceSteps()}
       value={value}
       onValueChange={onValueChange}
+      allowEnterAction
       aria-label={props["aria-label"] ?? "Krok naprawy"}
     />
   )

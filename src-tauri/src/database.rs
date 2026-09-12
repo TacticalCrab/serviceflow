@@ -53,7 +53,8 @@ impl Database {
                 status TEXT NOT NULL DEFAULT 'waiting_for_device',
                 payload TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-                status_changed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+                status_changed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+                ended_at TEXT
             );
 
             CREATE INDEX IF NOT EXISTS idx_service_requests_created_at
@@ -122,6 +123,35 @@ impl Database {
 
         connection.execute(
             "UPDATE service_requests SET status_changed_at = created_at WHERE status_changed_at IS NULL",
+            [],
+        )?;
+
+        let has_ended_at = {
+            let mut statement = connection.prepare("PRAGMA table_info(service_requests)")?;
+            let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+            let mut found = false;
+
+            for column in columns {
+                if column? == "ended_at" {
+                    found = true;
+                    break;
+                }
+            }
+
+            found
+        };
+
+        if !has_ended_at {
+            connection.execute("ALTER TABLE service_requests ADD COLUMN ended_at TEXT", [])?;
+        }
+
+        connection.execute(
+            "
+            UPDATE service_requests
+            SET ended_at = COALESCE(status_changed_at, created_at)
+            WHERE ended_at IS NULL
+                AND status IN ('closed', 'cancelled')
+            ",
             [],
         )?;
 
