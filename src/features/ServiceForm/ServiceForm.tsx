@@ -1063,31 +1063,6 @@ function ServiceForm({
 
           <FieldSet className="order-3 rounded-lg border p-4">
             <FieldLegend>Plan naprawy</FieldLegend>
-            <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <form.Field name="repairTime">
-                {(field) => {
-                  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
-
-                  return (
-                    <Field data-invalid={isInvalid}>
-                      <FieldLabel htmlFor={field.name}>Przewidywany czas naprawy</FieldLabel>
-                      <Input
-                        id={field.name}
-                        name={field.name}
-                        value={field.state.value ?? ""}
-                        onBlur={field.handleBlur}
-                        onChange={(event) => field.handleChange(optionalText(event.target.value))}
-                        aria-invalid={isInvalid}
-                        placeholder="Np. 3 dni robocze"
-                      />
-                      {isInvalid && <FieldError errors={field.state.meta.errors} />}
-                    </Field>
-                  )
-                }}
-              </form.Field>
-
-            </FieldGroup>
-
             <form.Field name="repairSteps" mode="array">
               {(field) => (
                 <Field>
@@ -1170,6 +1145,28 @@ function ServiceForm({
                   </Button>
                 </Field>
               )}
+            </form.Field>
+
+            <form.Field name="repairTime">
+              {(field) => {
+                const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+                return (
+                  <Field data-invalid={isInvalid} className="mt-4 max-w-sm">
+                    <FieldLabel htmlFor={field.name}>Przewidywany czas naprawy</FieldLabel>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      value={field.state.value ?? ""}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(optionalText(event.target.value))}
+                      aria-invalid={isInvalid}
+                      placeholder="Np. 3 dni robocze"
+                    />
+                    {isInvalid && <FieldError errors={field.state.meta.errors} />}
+                  </Field>
+                )
+              }}
             </form.Field>
           </FieldSet>
 
