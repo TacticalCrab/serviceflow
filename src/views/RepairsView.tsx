@@ -788,11 +788,11 @@ function RepairsView() {
   function renderTableCell(request: ServiceRequest, column: TableColumnId) {
     switch (column) {
       case "status": return <td key={column} className="px-4 py-3" onClick={(event) => event.stopPropagation()}><StatusSelect value={request.status} onValueChange={(status) => void handleStatusChange(request, status)} disabled={updatingStatusIds.has(request.id)} compact className="h-7 text-xs" aria-label={`Status zlecenia #${request.id}`} /></td>
-      case "customer": return <td key={column} className="whitespace-nowrap px-4 py-3"><div className="font-medium">{request.client.name} {request.client.surname}</div>{!visibleColumns.phone && request.client.phone && <div className="mt-0.5 text-sm font-medium text-muted-foreground">{formatPhoneNumber(request.client.phone)}</div>}</td>
-      case "phone": return <td key={column} className="whitespace-nowrap px-4 py-3 font-medium text-muted-foreground">{request.client.phone ? formatPhoneNumber(request.client.phone) : "—"}</td>
-      case "device": return <td key={column} className="px-4 py-3"><div className="font-medium">{request.device.name}</div><div className="mt-0.5 text-sm font-medium text-muted-foreground">{[request.device.manufacturer, request.device.model, request.device.serialNumber ? `S/N: ${request.device.serialNumber}` : undefined].filter(Boolean).join(" · ")}</div></td>
+      case "customer": return <td key={column} className="whitespace-nowrap px-4 py-3"><div className="font-medium text-muted-foreground">{request.client.name} {request.client.surname}</div>{!visibleColumns.phone && request.client.phone && <div className="mt-0.5 text-sm font-medium">{formatPhoneNumber(request.client.phone)}</div>}</td>
+      case "phone": return <td key={column} className="whitespace-nowrap px-4 py-3 font-medium">{request.client.phone ? formatPhoneNumber(request.client.phone) : "—"}</td>
+      case "device": return <td key={column} className="px-4 py-3"><div className="font-medium text-muted-foreground">{request.device.name}</div><div className="mt-0.5 text-sm font-medium">{[request.device.manufacturer, request.device.model, request.device.serialNumber ? `S/N: ${request.device.serialNumber}` : undefined].filter(Boolean).join(" · ")}</div></td>
       case "manufacturer": return <td key={column} className="px-4 py-3">{request.device.manufacturer ?? "—"}</td>
-      case "model": return <td key={column} className="px-4 py-3">{request.device.model ?? "—"}</td>
+      case "model": return <td key={column} className="px-4 py-3 font-medium">{request.device.model ?? "—"}</td>
       case "serialNumber": return <td key={column} className="whitespace-nowrap px-4 py-3 font-mono text-xs">{request.device.serialNumber ?? "—"}</td>
       case "defect": return <td key={column} className="max-w-56 px-4 py-3 text-muted-foreground" title={request.device.defect ?? undefined}><span className="line-clamp-2">{request.device.defect ?? "—"}</span></td>
       case "repairTime": return <td key={column} className="whitespace-nowrap px-4 py-3">{request.repairTime ?? "—"}</td>
