@@ -20,6 +20,14 @@ function Input({ className, type, autoComplete = "off", onChange, ...props }: Re
         if (shouldCapitalize) {
           event.target.value = capitalizeFirstInputLetter(event.target.value)
         }
+
+        // Number inputs do not reliably support text selection. Normalize an
+        // initial zero followed by a digit instead, while retaining decimals
+        // such as 0.50.
+        if (type === "number") {
+          event.target.value = event.target.value.replace(/^0+(?=\d)/, "")
+        }
+
         onChange?.(event)
       }}
       {...props}
