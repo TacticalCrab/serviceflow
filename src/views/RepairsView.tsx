@@ -556,6 +556,10 @@ function RepairsView() {
     const requestedStatus = query.get("status")
     if (requestedStatus === "active" || requestedStatus === "closed") {
       setStatusFilter(requestedStatus)
+      if (requestedStatus === "closed") {
+        setSortColumn("endedAt")
+        setSortDirection("desc")
+      }
     }
 
     const requestedPreset = query.get("preset")
@@ -854,6 +858,10 @@ function RepairsView() {
             onValueChange={(value) => {
               if (value) {
                 setStatusFilter(value as StatusFilter)
+                if (value === "closed") {
+                  setSortColumn("endedAt")
+                  setSortDirection("desc")
+                }
               }
             }}
           >
