@@ -68,6 +68,11 @@ import {
   saveServiceSteps,
   useServiceSteps,
 } from "@/features/ServiceSteps/serviceSteps"
+import {
+  normalizeAdditionalCostHints,
+  saveAdditionalCostHints,
+  useAdditionalCostHints,
+} from "@/features/AdditionalCosts/hints"
 import type { ServiceStatus } from "@/features/ServiceRequests/api"
 import {
   serviceStatusDotClasses,
@@ -170,6 +175,7 @@ function ConfigurationView() {
   const configuredProducers = useDeviceProducers()
   const configuredProducerOrder = useDeviceProducerOrder()
   const configuredSteps = useServiceSteps()
+  const configuredAdditionalCostHints = useAdditionalCostHints()
   const configuredFontSize = useAppFontSize()
   const configuredInputCapitalization = useInputCapitalization()
   const configuredColumnOrder = useRepairsTableColumnOrder()
@@ -178,8 +184,10 @@ function ConfigurationView() {
   const [producers, setProducers] = useState(configuredProducers)
   const [producerOrder, setProducerOrder] = useState<DeviceProducerOrder>(configuredProducerOrder)
   const [steps, setSteps] = useState(configuredSteps)
+  const [additionalCostHints, setAdditionalCostHints] = useState(configuredAdditionalCostHints)
   const [newProducer, setNewProducer] = useState("")
   const [newStep, setNewStep] = useState("")
+  const [newAdditionalCostHint, setNewAdditionalCostHint] = useState("")
   const [fontSize, setFontSize] = useState(configuredFontSize)
   const [inputCapitalization, setInputCapitalization] = useState(configuredInputCapitalization)
   const [columnOrder, setColumnOrder] = useState(configuredColumnOrder)
@@ -188,6 +196,7 @@ function ConfigurationView() {
   const [saving, setSaving] = useState(false)
   const [savingProducers, setSavingProducers] = useState(false)
   const [savingSteps, setSavingSteps] = useState(false)
+  const [savingAdditionalCostHints, setSavingAdditionalCostHints] = useState(false)
   const [savingFontSize, setSavingFontSize] = useState(false)
   const [savingInputCapitalization, setSavingInputCapitalization] = useState(false)
   const [savingRepairsPerPage, setSavingRepairsPerPage] = useState(false)
@@ -202,6 +211,9 @@ function ConfigurationView() {
   const stepsDirty =
     JSON.stringify(normalizeServiceSteps(steps)) !==
     JSON.stringify(normalizeServiceSteps(configuredSteps))
+  const additionalCostHintsDirty =
+    JSON.stringify(normalizeAdditionalCostHints(additionalCostHints)) !==
+    JSON.stringify(normalizeAdditionalCostHints(configuredAdditionalCostHints))
   const fontSizeDirty = fontSize !== configuredFontSize
   const inputCapitalizationDirty = inputCapitalization !== configuredInputCapitalization
   const columnOrderDirty = JSON.stringify(columnOrder) !== JSON.stringify(configuredColumnOrder)
@@ -228,6 +240,10 @@ function ConfigurationView() {
   useEffect(() => {
     setSteps(configuredSteps)
   }, [configuredSteps])
+
+  useEffect(() => {
+    setAdditionalCostHints(configuredAdditionalCostHints)
+  }, [configuredAdditionalCostHints])
 
   useEffect(() => {
     setFontSize(configuredFontSize)
@@ -363,6 +379,35 @@ function ConfigurationView() {
       )
     } finally {
       setSavingSteps(false)
+    }
+  }
+
+  function addAdditionalCostHint() {
+    const hint = newAdditionalCostHint.trim()
+    if (!hint) return
+
+    setSaved(false)
+    setAdditionalCostHints((current) => [...current, hint])
+    setNewAdditionalCostHint("")
+  }
+
+  async function handleSaveAdditionalCostHints() {
+    setSavingAdditionalCostHints(true)
+    setError(null)
+    setSaved(false)
+
+    try {
+      const savedHints = await saveAdditionalCostHints(additionalCostHints)
+      setAdditionalCostHints(savedHints)
+      setSaved(true)
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Nie udało się zapisać podpowiedzi kosztów."
+      )
+    } finally {
+      setSavingAdditionalCostHints(false)
     }
   }
 
@@ -805,6 +850,83 @@ function ConfigurationView() {
             <Button type="button" size="sm" onClick={() => void handleSaveSteps()} disabled={savingSteps || !stepsDirty}>
               {savingSteps && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
               {savingSteps ? "Zapisywanie…" : "Zapisz kroki"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="order-3">
+        <CardHeader className="p-4 pb-0">
+          <CardTitle className="text-base">Podpowiedzi kosztów</CardTitle>
+          <CardDescription>
+            Lista jest dostępna w opisie dodatkowego kosztu podczas tworzenia i edycji zlecenia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 p-4">
+          <div className="flex gap-2">
+            <Input
+              value={newAdditionalCostHint}
+              onChange={(event) => setNewAdditionalCostHint(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return
+                event.preventDefault()
+                addAdditionalCostHint()
+              }}
+              placeholder="Np. Wymiana pompy"
+              autoComplete="off"
+              aria-label="Nowa podpowiedź kosztu"
+            />
+            <Button type="button" variant="outline" size="icon" onClick={addAdditionalCostHint} aria-label="Dodaj podpowiedź kosztu">
+              <PlusIcon />
+            </Button>
+          </div>
+          <div className="divide-y overflow-hidden rounded-lg border">
+            {additionalCostHints.length ? (
+              additionalCostHints.map((hint, index) => (
+                <div key={index} className="flex items-center gap-2 p-2">
+                  <Input
+                    value={hint}
+                    autoComplete="off"
+                    onChange={(event) => {
+                      setSaved(false)
+                      setAdditionalCostHints((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index ? event.target.value : item
+                        )
+                      )
+                    }}
+                    aria-label={`Podpowiedź kosztu ${index + 1}`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => {
+                      setSaved(false)
+                      setAdditionalCostHints((current) =>
+                        current.filter((_, itemIndex) => itemIndex !== index)
+                      )
+                    }}
+                    aria-label={`Usuń podpowiedź kosztu ${hint}`}
+                  >
+                    <Trash2Icon />
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <p className="p-3 text-sm text-muted-foreground">Nie dodano podpowiedzi kosztów.</p>
+            )}
+          </div>
+          {additionalCostHintsDirty && (
+            <div className="flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
+              <CircleAlertIcon className="size-4 shrink-0" />
+              Zmieniono podpowiedzi kosztów. Zapisz tę sekcję.
+            </div>
+          )}
+          <div className="flex justify-end">
+            <Button type="button" size="sm" onClick={() => void handleSaveAdditionalCostHints()} disabled={savingAdditionalCostHints || !additionalCostHintsDirty}>
+              {savingAdditionalCostHints && <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />}
+              {savingAdditionalCostHints ? "Zapisywanie…" : "Zapisz podpowiedzi"}
             </Button>
           </div>
         </CardContent>

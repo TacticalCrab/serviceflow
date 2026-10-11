@@ -6,6 +6,7 @@ import { CalendarIcon, PlusIcon, SaveIcon, Trash2Icon } from "lucide-react"
 
 import { DefaultValueInput } from "@/components/DefaultValueInput"
 import { DeviceProducerInput } from "@/components/DeviceProducerInput"
+import { AdditionalCostHintInput } from "@/components/AdditionalCostHintInput"
 import { ServiceStepInput } from "@/components/ServiceStepInput"
 import { TimeInput } from "@/components/TimeInput"
 import { Button } from "@/components/ui/button"
@@ -1243,8 +1244,8 @@ function ServiceForm({
                                 descriptionField.state.meta.isTouched &&
                                 !descriptionField.state.meta.isValid
                               const inputWidth = Math.min(
-                                Math.max((descriptionField.state.value?.length ?? 0) * 10 + 48, 220),
-                                520
+                                Math.max((descriptionField.state.value?.length ?? 0) * 10 + 48, 280),
+                                600
                               )
 
                               return (
@@ -1254,14 +1255,12 @@ function ServiceForm({
                                   style={{ width: inputWidth }}
                                 >
                                   <FieldLabel className="sr-only" htmlFor={descriptionField.name}>Opis</FieldLabel>
-                                  <Input
+                                  <AdditionalCostHintInput
                                     id={descriptionField.name}
                                     name={descriptionField.name}
-                                    value={descriptionField.state.value}
+                                    value={descriptionField.state.value ?? ""}
                                     onBlur={descriptionField.handleBlur}
-                                    onChange={(event) =>
-                                      descriptionField.handleChange(event.target.value)
-                                    }
+                                    onValueChange={descriptionField.handleChange}
                                     onKeyDown={(event) => {
                                       if (event.key !== "Enter") return
 
