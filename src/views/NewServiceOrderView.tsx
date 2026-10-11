@@ -62,6 +62,7 @@ function NewServiceOrderView() {
         formId={NEW_SERVICE_REQUEST_FORM_ID}
         onDirtyChange={setDirty}
         onSubmit={handleSubmit}
+        submitLabel="Utwórz zlecenie"
       />
     </div>
   )
